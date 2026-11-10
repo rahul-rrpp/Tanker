@@ -1,0 +1,89 @@
+/** Machine-readable error codes returned in `error.code`. Clients should branch on these, not on messages. */
+export const ErrorCode = {
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  BAD_REQUEST: 'BAD_REQUEST',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  INVALID_TOKEN: 'INVALID_TOKEN',
+  SESSION_REVOKED: 'SESSION_REVOKED',
+  REFRESH_TOKEN_REUSED: 'REFRESH_TOKEN_REUSED',
+  REFRESH_CONFLICT: 'REFRESH_CONFLICT',
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  ACCOUNT_SUSPENDED: 'ACCOUNT_SUSPENDED',
+  ACCOUNT_DEACTIVATED: 'ACCOUNT_DEACTIVATED',
+  ACCOUNT_NOT_VERIFIED: 'ACCOUNT_NOT_VERIFIED',
+  FORBIDDEN: 'FORBIDDEN',
+  CSRF_FAILED: 'CSRF_FAILED',
+  AGENCY_NOT_APPROVED: 'AGENCY_NOT_APPROVED',
+  AGENCY_MEMBERSHIP_REQUIRED: 'AGENCY_MEMBERSHIP_REQUIRED',
+  NOT_FOUND: 'NOT_FOUND',
+  CONFLICT: 'CONFLICT',
+  PHONE_ALREADY_REGISTERED: 'PHONE_ALREADY_REGISTERED',
+  EMAIL_ALREADY_REGISTERED: 'EMAIL_ALREADY_REGISTERED',
+  INVALID_OTP: 'INVALID_OTP',
+  OTP_EXPIRED: 'OTP_EXPIRED',
+  OTP_ATTEMPTS_EXCEEDED: 'OTP_ATTEMPTS_EXCEEDED',
+  OTP_COOLDOWN: 'OTP_COOLDOWN',
+  OTP_SEND_LIMIT: 'OTP_SEND_LIMIT',
+  OTP_DELIVERY_FAILED: 'OTP_DELIVERY_FAILED',
+  VERIFICATION_REQUIRED: 'VERIFICATION_REQUIRED',
+  INVALID_VERIFICATION_TOKEN: 'INVALID_VERIFICATION_TOKEN',
+  INVALID_INVITATION: 'INVALID_INVITATION',
+  RATE_LIMITED: 'RATE_LIMITED',
+  PORTAL_NOT_AVAILABLE: 'PORTAL_NOT_AVAILABLE',
+  COMPANY_REQUIRED: 'COMPANY_REQUIRED',
+  COMPANY_NOT_ELIGIBLE: 'COMPANY_NOT_ELIGIBLE',
+  COMPANY_SUSPENDED: 'COMPANY_SUSPENDED',
+  GST_ALREADY_REGISTERED: 'GST_ALREADY_REGISTERED',
+  INVALID_STATE_TRANSITION: 'INVALID_STATE_TRANSITION',
+  OFFER_NOT_ACTIONABLE: 'OFFER_NOT_ACTIONABLE',
+  OFFER_EXPIRED: 'OFFER_EXPIRED',
+  OFFER_OUT_OF_RANGE: 'OFFER_OUT_OF_RANGE',
+  BOOKING_ALREADY_CONFIRMED: 'BOOKING_ALREADY_CONFIRMED',
+  ROUTE_NOT_FOUND: 'ROUTE_NOT_FOUND',
+  MAPS_UNAVAILABLE: 'MAPS_UNAVAILABLE',
+  PAYMENT_NOT_ALLOWED: 'PAYMENT_NOT_ALLOWED',
+  PAYMENT_VERIFICATION_FAILED: 'PAYMENT_VERIFICATION_FAILED',
+  FILE_REJECTED: 'FILE_REJECTED',
+  DEMO_DISABLED: 'DEMO_DISABLED',
+  TRANSPORTER_REQUIRED: 'TRANSPORTER_REQUIRED',
+  TRANSPORTER_NOT_VERIFIED: 'TRANSPORTER_NOT_VERIFIED',
+  TRANSPORTER_SUSPENDED: 'TRANSPORTER_SUSPENDED',
+  DRIVER_REQUIRED: 'DRIVER_REQUIRED',
+  RESOURCE_CONFLICT: 'RESOURCE_CONFLICT',
+  NOT_COMPLIANT: 'NOT_COMPLIANT',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
+export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+export class AppError extends Error {
+  constructor(
+    public readonly statusCode: number,
+    public readonly code: ErrorCode,
+    message: string,
+    public readonly details?: unknown,
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+
+  static badRequest(message: string, code: ErrorCode = ErrorCode.BAD_REQUEST, details?: unknown) {
+    return new AppError(400, code, message, details);
+  }
+  static unauthorized(message = 'Authentication required', code: ErrorCode = ErrorCode.UNAUTHENTICATED) {
+    return new AppError(401, code, message);
+  }
+  static forbidden(message = 'You do not have permission to perform this action', code: ErrorCode = ErrorCode.FORBIDDEN) {
+    return new AppError(403, code, message);
+  }
+  static notFound(message = 'Resource not found') {
+    return new AppError(404, ErrorCode.NOT_FOUND, message);
+  }
+  static conflict(message: string, code: ErrorCode = ErrorCode.CONFLICT) {
+    return new AppError(409, code, message);
+  }
+  static tooMany(message: string, code: ErrorCode = ErrorCode.RATE_LIMITED, details?: unknown) {
+    return new AppError(429, code, message, details);
+  }
+}

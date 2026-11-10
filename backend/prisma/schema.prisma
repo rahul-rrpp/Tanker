@@ -1,0 +1,2383 @@
+// TankerLink - Oil Tanker Booking & Logistics Marketplace.
+//
+// Section 1 (identity, tenancy, sessions, audit) is the original authentication core and keeps its
+// original table names. Section 2 (company portal & marketplace) uses snake_case table names.
+//
+// Domain mapping:
+//   users        -> "User"           (all human accounts, every role)
+//   transporters -> "Agency"         (a transporter company; AGENCY_* roles are transporter staff)
+//   drivers      -> "Driver"         (sub-login under a transporter)
+//   companies    -> companies        (customer companies booking tankers - the Phase 1 portal)
+//
+// Conventions: UTC timestamps (displayed in Asia/Kolkata by clients), Decimal for money,
+// latitude/longitude stored as separate Decimal(9,6) columns, financial rows are never deleted.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum RoleName {
+  SUPER_ADMIN
+  AGENCY_OWNER
+  AGENCY_MANAGER
+  DISPATCHER
+  FINANCE_MANAGER
+  DRIVER
+  CUSTOMER
+  COMPANY_ADMIN // owner/administrator of a customer company (Phase 1 portal)
+  COMPANY_USER // additional company staff (future)
+  EMPLOYEE // platform employee (future back-office portal)
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum VerificationStatus {
+  PENDING_VERIFICATION
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum AgencyMemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum LicenceType {
+  LMV
+  HMV
+  HGMV
+  HTV
+  TRANS
+}
+
+enum OtpChannel {
+  SMS
+  EMAIL
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  PHONE_CHANGE
+  EMAIL_CHANGE
+  ADMIN_2FA
+  BANK_CHANGE
+}
+
+enum ClientType {
+  WEB
+  MOBILE
+}
+
+enum AuthEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  LOGOUT_ALL
+  TOKEN_REFRESHED
+  REFRESH_TOKEN_REUSE
+  ACCOUNT_LOCKED
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  REGISTERED
+}
+
+enum LoginMethod {
+  PASSWORD
+  OTP
+  REFRESH
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id                  String        @id @default(uuid()) @db.Uuid
+  fullName            String        @db.VarChar(120)
+  email               String?       @unique @db.VarChar(254) // stored lower-cased
+  phone               String        @unique @db.VarChar(15) // stored as 10-digit Indian mobile number
+  passwordHash        String?
+  isEmailVerified     Boolean       @default(false)
+  isPhoneVerified     Boolean       @default(false)
+  accountStatus       AccountStatus @default(PENDING_VERIFICATION)
+  failedLoginAttempts Int           @default(0)
+  lockedUntil         DateTime?
+  passwordChangedAt   DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  roles            UserRole[]
+  memberships      AgencyMember[]
+  ownedAgency      Agency?            @relation("AgencyOwner")
+  driver           Driver?
+  customer         Customer?
+  sessions         RefreshSession[]
+  loginAudits      LoginAudit[]
+  invitationsMade  AgencyInvitation[] @relation("InvitationCreator")
+  agenciesVerified Agency[]           @relation("AgencyVerifier")
+
+  companyMembership      CompanyMember?
+  employee               Employee?
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  bookingsCreated        Booking[]               @relation("BookingCreator")
+  documentsUploaded      CompanyDocument[]       @relation("DocumentUploader")
+  ticketsCreated         SupportTicket[]         @relation("TicketCreator")
+  paymentsInitiated      Payment[]               @relation("PaymentInitiator")
+  auditLogs              AuditLog[]
+
+  @@index([accountStatus])
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        RoleName         @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id                String                       @id @default(uuid()) @db.Uuid
+  key               String                       @unique @db.VarChar(80) // e.g. "agency:members:manage"
+  description       String?
+  createdAt         DateTime                     @default(now())
+  roles             RolePermission[]
+  employeeRoles     EmployeeRolePermission[]
+  employeeOverrides EmployeePermissionOverride[]
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId     String   @db.Uuid
+  roleId     String   @db.Uuid
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy
+// ---------------------------------------------------------------------------
+
+model Agency {
+  id                     String              @id @default(uuid()) @db.Uuid
+  companyName            String              @db.VarChar(160)
+  ownerId                String              @unique @db.Uuid
+  gstNumber              String?             @unique @db.VarChar(15)
+  panNumber              String              @unique @db.VarChar(10)
+  address                String              @db.VarChar(300)
+  city                   String              @db.VarChar(80)
+  state                  String              @db.VarChar(80)
+  pincode                String              @db.Char(6)
+  verificationStatus     VerificationStatus  @default(PENDING_VERIFICATION)
+  rejectionReason        String?             @db.VarChar(500)
+  verifiedAt             DateTime?
+  verifiedById           String?             @db.Uuid
+  termsAcceptedAt        DateTime
+  // Marketplace profile (transporter)
+  rating                 Decimal             @default(0) @db.Decimal(2, 1)
+  completedTrips         Int                 @default(0)
+  serviceStates          String[]            @default([])
+  isDemo                 Boolean             @default(false) // seeded demo transporter - never a real business
+  category               String?             @db.VarChar(40) // transporter category used by commission rules
+  statusBeforeSuspension VerificationStatus?
+  suspensionReason       String?             @db.VarChar(500)
+  createdById            String?             @db.Uuid // admin/employee who registered it (compatible with future self-login)
+  transporterCode        String              @unique @default(dbgenerated("('TRP'::text || lpad((nextval('transporter_code_seq'::regclass))::text, 6, '0'::text))")) @db.VarChar(12)
+  businessType           String?             @db.VarChar(40)
+  operationalAddress     String?             @db.VarChar(300)
+  operatingCities        String[]            @default([])
+  preferredRoutes        String[]            @default([])
+  declaredTankers        Int?
+  capacityCategories     String[]            @default([])
+  productCategories      String[]            @default([]) // Product.code values
+  bookingAlertPrefs      Json?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+
+  owner           User                       @relation("AgencyOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  verifiedBy      User?                      @relation("AgencyVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  members         AgencyMember[]
+  drivers         Driver[]
+  invitations     AgencyInvitation[]
+  tankers         Tanker[]
+  offers          TransporterOffer[]
+  allocations     BookingAllocation[]
+  trips           Trip[]
+  settlements     Settlement[]
+  driverHistory   DriverTransporterHistory[]
+  contacts        TransporterContact[]
+  bankAccounts    TransporterBankAccount[]
+  tickets         SupportTicket[]
+  ignoredBookings BookingIgnore[]
+
+  @@index([verificationStatus])
+}
+
+model AgencyMember {
+  id        String             @id @default(uuid()) @db.Uuid
+  agencyId  String             @db.Uuid
+  userId    String             @db.Uuid
+  role      RoleName // role the user holds inside this agency
+  status    AgencyMemberStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // A user belongs to at most one agency (single-tenant membership).
+  @@unique([userId])
+  @@index([agencyId, role])
+}
+
+model AgencyInvitation {
+  id          String    @id @default(uuid()) @db.Uuid
+  agencyId    String    @db.Uuid
+  codeHash    String    @unique // HMAC of the invitation code; raw code is shown once
+  codeHint    String    @db.VarChar(8) // last characters, for display only
+  role        RoleName  @default(DRIVER)
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now())
+
+  agency    Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  createdBy User   @relation("InvitationCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([agencyId])
+}
+
+model Driver {
+  id                      String             @id @default(uuid()) @db.Uuid
+  userId                  String             @unique @db.Uuid
+  agencyId                String             @db.Uuid
+  licenceNumber           String             @unique @db.VarChar(20)
+  licenceType             LicenceType
+  licenceExpiry           DateTime           @db.Date
+  verificationStatus      VerificationStatus @default(PENDING_VERIFICATION)
+  isDemo                  Boolean            @default(false)
+  hazardousTraining       HazardousTraining  @default(NOT_PROVIDED)
+  hazardousTrainingExpiry DateTime?          @db.Date
+  rejectionReason         String?            @db.VarChar(500)
+  address                 String?            @db.VarChar(300)
+  emergencyContactName    String?            @db.VarChar(120)
+  emergencyContactPhone   String?            @db.VarChar(15)
+  employmentStatus        EmploymentStatus   @default(ACTIVE)
+  isActive                Boolean            @default(true)
+  invitedAt               DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  user           User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agency         Agency                     @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  trips          Trip[]
+  assignedTanker Tanker?                    @relation("TankerDriver")
+  history        DriverTransporterHistory[]
+
+  @@index([agencyId, verificationStatus])
+}
+
+model Customer {
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @unique @db.Uuid
+  customerType CustomerType
+  businessName String?      @db.VarChar(160)
+  gstNumber    String?      @db.VarChar(15)
+  city         String?      @db.VarChar(80)
+  state        String?      @db.VarChar(80)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Verification, sessions & audit
+// ---------------------------------------------------------------------------
+
+model OTPVerification {
+  id          String     @id @default(uuid()) @db.Uuid
+  destination String     @db.VarChar(254) // normalised phone or lower-cased email
+  channel     OtpChannel
+  purpose     OtpPurpose
+  otpHash     String // HMAC-SHA256 of the code; raw codes are never stored
+  expiresAt   DateTime
+  attempts    Int        @default(0)
+  maxAttempts Int
+  verifiedAt  DateTime? // code was entered correctly
+  consumedAt  DateTime? // the verification was used (registration, login, reset)
+  invalidated Boolean    @default(false) // superseded by a newer code or locked out
+  ipAddress   String?    @db.VarChar(64)
+  createdAt   DateTime   @default(now())
+
+  @@index([destination, purpose, createdAt])
+}
+
+model RefreshSession {
+  id            String     @id @default(uuid()) @db.Uuid
+  userId        String     @db.Uuid
+  familyId      String     @db.Uuid // all rotations of one login share a family
+  tokenHash     String     @unique
+  clientType    ClientType
+  persistent    Boolean    @default(true) // "Remember me": false = browser-session cookies + short expiry
+  deviceInfo    String?    @db.VarChar(200)
+  ipAddress     String?    @db.VarChar(64)
+  userAgent     String?    @db.VarChar(300)
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  revokedReason String?    @db.VarChar(40)
+  replacedById  String?    @db.Uuid
+  lastUsedAt    DateTime?
+  createdAt     DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+}
+
+model LoginAudit {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String?      @db.Uuid
+  identifier    String?      @db.VarChar(254)
+  event         AuthEvent
+  method        LoginMethod?
+  success       Boolean
+  failureReason String?      @db.VarChar(80)
+  clientType    ClientType?
+  ipAddress     String?      @db.VarChar(64)
+  userAgent     String?      @db.VarChar(300)
+  createdAt     DateTime     @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([identifier, createdAt])
+}
+
+// ===========================================================================
+// SECTION 2 - COMPANY PORTAL & MARKETPLACE
+// ===========================================================================
+
+enum CompanyStatus {
+  PENDING_VERIFICATION
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum BusinessType {
+  MANUFACTURER
+  TRADER
+  DISTRIBUTOR
+  OIL_MARKETING_COMPANY
+  REFINERY
+  PETROL_PUMP_DEALER
+  INDUSTRIAL_CONSUMER
+  LOGISTICS_PROVIDER
+  OTHER
+}
+
+enum AddressType {
+  REGISTERED
+  BILLING
+}
+
+enum CompanyDocumentType {
+  GST_CERTIFICATE
+  PAN_CARD
+  REGISTRATION_CERTIFICATE
+  OTHER
+}
+
+enum DocumentReviewStatus {
+  UPLOADED
+  VERIFIED
+  REJECTED
+}
+
+enum LocationType {
+  FACTORY
+  OIL_DEPOT
+  WAREHOUSE
+  REFINERY
+  PETROL_PUMP
+  DELIVERY_POINT
+  OTHER
+}
+
+enum BookingStatus {
+  SEARCHING
+  OFFERS_RECEIVED
+  NEGOTIATION
+  CONFIRMED
+  VEHICLE_ASSIGNED
+  DRIVER_ASSIGNED
+  LOADING
+  IN_TRANSIT
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum BookingLocationType {
+  PICKUP
+  DELIVERY
+}
+
+enum ProductCompatibility {
+  ANY_COMPATIBLE // any tanker certified for the product
+  DEDICATED // tanker dedicated to this product only
+  CLEANED_CERTIFIED // tank cleaning certificate required before loading
+}
+
+enum ActorType {
+  COMPANY
+  TRANSPORTER
+  DRIVER
+  ADMIN
+  EMPLOYEE
+  SYSTEM
+}
+
+enum OfferStatus {
+  PENDING // awaiting the company's decision
+  COUNTERED // company countered; awaiting the transporter
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+  UNSUCCESSFUL // closed because another offer was accepted / booking cancelled
+}
+
+enum NegotiationAction {
+  OFFER_SUBMITTED
+  CUSTOMER_PRICE_ACCEPTED
+  COUNTER_OFFER
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  WITHDRAWN
+  CLOSED
+}
+
+enum AllocationStatus {
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TankerStatus {
+  AVAILABLE
+  RESERVED
+  BOOKED
+  LOADING
+  IN_TRANSIT
+  UNLOADING
+  ON_TRIP // legacy: assigned to an active trip
+  MAINTENANCE
+  UNAVAILABLE
+  SUSPENDED
+  INACTIVE
+}
+
+enum TripStatus {
+  SCHEDULED
+  VEHICLE_ASSIGNED
+  DRIVER_ASSIGNED
+  DRIVER_ACCEPTED
+  REACHED_PICKUP
+  LOADING // loading started
+  LOADING_COMPLETED
+  IN_TRANSIT
+  REACHED_DESTINATION
+  UNLOADING_STARTED
+  UNLOADING_COMPLETED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum TrackingSource {
+  GPS_DEVICE
+  DRIVER_APP
+  SIMULATED // demo data - must never be presented as live tracking
+}
+
+enum TripDocumentType {
+  DELIVERY_PROOF
+  LOADING_SLIP
+  LORRY_RECEIPT
+  E_WAY_BILL
+  OTHER
+}
+
+/// Booking-level payment status.
+enum PaymentStatus {
+  PENDING
+  ADVANCE_PAID
+  PARTIALLY_PAID
+  PAID
+  FAILED
+  REFUND_PENDING
+  REFUNDED
+}
+
+/// Status of a single payment transaction.
+enum PaymentTxnStatus {
+  CREATED
+  PAID
+  FAILED
+  REFUND_PENDING
+  REFUNDED
+}
+
+enum PaymentPurpose {
+  ADVANCE
+  BALANCE
+  FULL
+}
+
+enum PaymentMethod {
+  UPI
+  NETBANKING
+  CARD // card, type unknown (legacy / gateway did not report it)
+  DEBIT_CARD
+  CREDIT_CARD
+  OTHER
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  MOCK // development gateway simulator - rejected in production
+  OFFLINE // authorised offline payment recorded by finance (NEFT/RTGS/cheque)
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum NotificationType {
+  REGISTRATION_SUCCESSFUL
+  COMPANY_VERIFICATION_UPDATE
+  BOOKING_CREATED
+  OFFER_RECEIVED
+  OFFER_ACCEPTED
+  COUNTER_OFFER_RECEIVED
+  COUNTER_OFFER_ACCEPTED
+  OFFER_EXPIRED
+  BOOKING_CONFIRMED
+  VEHICLE_ASSIGNED
+  DRIVER_ASSIGNED
+  LOADING_STARTED
+  TRIP_STARTED
+  LOADING_COMPLETED
+  DELIVERY_COMPLETED
+  PAYMENT_RECEIVED
+  PAYMENT_PENDING
+  PAYMENT_FAILED
+  BOOKING_CANCELLED
+  SUPPORT_UPDATE
+  DOCUMENT_EXPIRY
+  COMPLAINT_CREATED
+  ADMIN_ALERT
+  BROADCAST
+  LEAD_ASSIGNED
+  FOLLOW_UP_DUE
+  TASK_ASSIGNED
+  TASK_DEADLINE
+  ENTITY_REGISTERED
+  DOCUMENT_PENDING
+  VERIFICATION_REJECTED
+  COMPLAINT_ASSIGNED
+  MIS_REMINDER
+  ATTENDANCE_REMINDER
+  LEAVE_UPDATE
+  NEW_BOOKING_AVAILABLE
+  BOOKING_EXPIRING
+  OFFER_SUBMITTED
+  OFFER_REJECTED
+  TRIP_ASSIGNED
+  TRIP_COMPLETED
+  SETTLEMENT_PROCESSED
+  TRANSPORTER_VERIFICATION_UPDATE
+}
+
+enum NotificationChannel {
+  IN_APP
+  SMS
+  WHATSAPP
+  EMAIL
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum TicketCategory {
+  TRANSPORTER_ISSUE
+  DRIVER_ISSUE
+  VEHICLE_DELAY
+  FREIGHT_DISPUTE
+  LOADING_PROBLEM
+  DELIVERY_PROBLEM
+  PAYMENT_PROBLEM
+  OTHER
+  BOOKING_ISSUE
+  FREIGHT_NEGOTIATION
+  COMPANY_DISPUTE
+  GPS_ISSUE
+  SETTLEMENT_ISSUE
+  DOCUMENT_VERIFICATION
+  TECHNICAL_SUPPORT
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  UNDER_REVIEW // legacy label shown to companies as "Under review"
+  UNDER_INVESTIGATION
+  AWAITING_RESPONSE
+  RESOLVED
+  CLOSED
+}
+
+// ---------------------------------------------------------------------------
+// Companies (customer tenants)
+// ---------------------------------------------------------------------------
+
+model Company {
+  id                      String         @id @default(uuid()) @db.Uuid
+  companyCode             String         @unique @db.VarChar(12) // CMP000001 (from company_code_seq)
+  name                    String         @db.VarChar(160)
+  gstNumber               String         @unique @db.VarChar(15)
+  panNumber               String?        @db.VarChar(10)
+  businessType            BusinessType
+  industry                String?        @db.VarChar(80)
+  website                 String?        @db.VarChar(200)
+  logoKey                 String?        @db.VarChar(200) // storage key of the uploaded logo
+  contactPersonName       String         @db.VarChar(120)
+  contactPhone            String         @db.VarChar(15)
+  contactEmail            String         @db.VarChar(254)
+  billingSameAsRegistered Boolean        @default(true)
+  status                  CompanyStatus  @default(PENDING_VERIFICATION)
+  statusReason            String?        @db.VarChar(500)
+  verifiedAt              DateTime?
+  termsAcceptedAt         DateTime
+  isDemo                  Boolean        @default(false)
+  /// Verification status to restore when a suspension is lifted.
+  statusBeforeSuspension  CompanyStatus?
+  suspensionReason        String?        @db.VarChar(500)
+  createdById             String?        @db.Uuid // employee who registered the company on its behalf
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  members        CompanyMember[]
+  addresses      CompanyAddress[]
+  contacts       CompanyContact[]
+  documents      CompanyDocument[]
+  savedLocations SavedLocation[]
+  bookings       Booking[]
+  payments       Payment[]
+  invoices       Invoice[]
+  notifications  Notification[]
+  tickets        SupportTicket[]
+  auditLogs      AuditLog[]
+
+  @@index([status])
+  @@map("companies")
+}
+
+/// Links a login (User) to a company. One company per user.
+model CompanyMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @db.Uuid
+  userId    String   @unique @db.Uuid
+  role      RoleName // COMPANY_ADMIN | COMPANY_USER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("company_users")
+}
+
+model CompanyAddress {
+  id        String      @id @default(uuid()) @db.Uuid
+  companyId String      @db.Uuid
+  type      AddressType
+  address   String      @db.VarChar(300)
+  city      String      @db.VarChar(80)
+  state     String      @db.VarChar(80)
+  pincode   String      @db.Char(6)
+  country   String      @default("India") @db.VarChar(60)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, type])
+  @@map("company_addresses")
+}
+
+model CompanyContact {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @db.Uuid
+  name        String   @db.VarChar(120)
+  designation String?  @db.VarChar(80)
+  phone       String   @db.VarChar(15)
+  email       String?  @db.VarChar(254)
+  department  String?  @db.VarChar(80)
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("company_contacts")
+}
+
+/// Uploaded KYC documents. Replacing a document keeps the old row (isCurrent=false) for audit.
+model CompanyDocument {
+  id           String               @id @default(uuid()) @db.Uuid
+  companyId    String               @db.Uuid
+  type         CompanyDocumentType
+  title        String?              @db.VarChar(120)
+  fileName     String               @db.VarChar(200)
+  storageKey   String               @unique @db.VarChar(200)
+  mimeType     String               @db.VarChar(80)
+  sizeBytes    Int
+  status       DocumentReviewStatus @default(UPLOADED)
+  reviewNote   String?              @db.VarChar(500)
+  isCurrent    Boolean              @default(true)
+  uploadedById String?              @db.Uuid
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("DocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, type, isCurrent])
+  @@map("company_documents")
+}
+
+model SavedLocation {
+  id                String       @id @default(uuid()) @db.Uuid
+  companyId         String       @db.Uuid
+  name              String       @db.VarChar(120)
+  type              LocationType
+  contactPerson     String?      @db.VarChar(120)
+  contactPhone      String?      @db.VarChar(15)
+  address           String       @db.VarChar(400)
+  placeId           String?      @db.VarChar(300) // Google place id (or OSM id in development)
+  latitude          Decimal      @db.Decimal(9, 6)
+  longitude         Decimal      @db.Decimal(9, 6)
+  city              String?      @db.VarChar(80)
+  state             String?      @db.VarChar(80)
+  pincode           String?      @db.VarChar(6)
+  isDefaultPickup   Boolean      @default(false)
+  isDefaultDelivery Boolean      @default(false)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  bookingLocations BookingLocation[]
+
+  @@index([companyId, name])
+  @@map("saved_locations")
+}
+
+// ---------------------------------------------------------------------------
+// Master data (admin-configurable in a future phase)
+// ---------------------------------------------------------------------------
+
+model Product {
+  id                      String   @id @default(uuid()) @db.Uuid
+  code                    String   @unique @db.VarChar(40)
+  name                    String   @db.VarChar(80)
+  category                String   @db.VarChar(40) // FUEL | LUBRICANT | INDUSTRIAL | OTHER
+  description             String?  @db.VarChar(300)
+  requiresSpecialApproval Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  sortOrder               Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tankers      TankerProduct[]
+  bookings     Booking[]
+  pricingRules PricingRule[]
+
+  @@map("products")
+}
+
+model TankerType {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(40)
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(300)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tankers      Tanker[]
+  requirements BookingRequirement[]
+  pricingRules PricingRule[]
+
+  @@map("tanker_types")
+}
+
+/// Freight estimation rules. The most specific active rule wins (highest priority, then most matched fields).
+/// Suggested freight = max(distanceKm x ratePerKm, minimumFreight) x numberOfTankers.
+model PricingRule {
+  id                    String    @id @default(uuid()) @db.Uuid
+  name                  String    @db.VarChar(120)
+  ratePerKm             Decimal   @db.Decimal(10, 2)
+  minimumFreight        Decimal   @default(0) @db.Decimal(12, 2)
+  /// Flat additional charge per tanker (e.g. loading/unloading, permits); added to the suggestion.
+  additionalCharge      Decimal   @default(0) @db.Decimal(12, 2)
+  additionalChargeLabel String?   @db.VarChar(80)
+  capacityKl            Decimal?  @db.Decimal(6, 2) // null = any capacity
+  productId             String?   @db.Uuid
+  tankerTypeId          String?   @db.Uuid
+  originState           String?   @db.VarChar(80) // route-specific rules
+  destState             String?   @db.VarChar(80)
+  priority              Int       @default(0)
+  isActive              Boolean   @default(true)
+  validFrom             DateTime?
+  validTo               DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  product    Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  tankerType TankerType? @relation(fields: [tankerTypeId], references: [id], onDelete: SetNull)
+  bookings   Booking[]
+
+  @@index([isActive, priority])
+  @@map("pricing_rules")
+}
+
+/// Key/value platform configuration (offer limits, fees, GST, expiry...).
+model PlatformSetting {
+  key         String   @id @db.VarChar(80)
+  value       Json
+  description String?  @db.VarChar(300)
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Transporter fleet (transporter = Agency)
+// ---------------------------------------------------------------------------
+
+model Tanker {
+  id                 String             @id @default(uuid()) @db.Uuid
+  transporterId      String             @db.Uuid
+  registrationNumber String             @unique @db.VarChar(15)
+  capacityKl         Decimal            @db.Decimal(6, 2)
+  tankerTypeId       String             @db.Uuid
+  compartments       Int                @default(1)
+  status             TankerStatus       @default(AVAILABLE)
+  gpsDeviceId        String?            @db.VarChar(60)
+  isDemo             Boolean            @default(false)
+  verificationStatus VerificationStatus @default(PENDING_VERIFICATION)
+  rejectionReason    String?            @db.VarChar(500)
+  assignedDriverId   String?            @unique @db.Uuid
+  insuranceExpiry    DateTime?          @db.Date
+  fitnessExpiry      DateTime?          @db.Date
+  permitExpiry       DateTime?          @db.Date
+  pucExpiry          DateTime?          @db.Date
+  pesoLicenceNumber  String?            @db.VarChar(40) // PESO licence where the product requires it
+  pesoExpiry         DateTime?          @db.Date
+  currentLatitude    Decimal?           @db.Decimal(9, 6)
+  currentLongitude   Decimal?           @db.Decimal(9, 6)
+  lastLocationAt     DateTime?
+  vehicleMake        String?            @db.VarChar(60)
+  vehicleModel       String?            @db.VarChar(60)
+  manufacturingYear  Int?
+  availableFrom      DateTime? // when the tanker is next free (transporter-declared or set at trip release)
+  availableLocation  String?            @db.VarChar(200)
+  availableLatitude  Decimal?           @db.Decimal(9, 6)
+  availableLongitude Decimal?           @db.Decimal(9, 6)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  assignedDriver     Driver?              @relation("TankerDriver", fields: [assignedDriverId], references: [id], onDelete: SetNull)
+  transporter        Agency               @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+  tankerType         TankerType           @relation(fields: [tankerTypeId], references: [id], onDelete: Restrict)
+  products           TankerProduct[]
+  trips              Trip[]
+  compartmentRows    TankerCompartment[]
+  availabilityBlocks TankerAvailability[]
+
+  @@index([transporterId, status])
+  @@map("tankers")
+}
+
+/// Products a tanker is certified to carry. Matching never assumes a tanker can carry everything.
+model TankerProduct {
+  tankerId  String @db.Uuid
+  productId String @db.Uuid
+
+  tanker  Tanker  @relation(fields: [tankerId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@id([tankerId, productId])
+  @@map("tanker_products")
+}
+
+// ---------------------------------------------------------------------------
+// Bookings
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id                    String        @id @default(uuid()) @db.Uuid
+  bookingCode           String        @unique @db.VarChar(14) // TLB0000001 (from booking_code_seq)
+  companyId             String        @db.Uuid
+  createdById           String?       @db.Uuid
+  status                BookingStatus @default(SEARCHING)
+  productId             String        @db.Uuid
+  // Route (always computed server-side from road routing, never trusted from the client)
+  distanceKm            Decimal       @db.Decimal(10, 2)
+  durationMinutes       Int
+  routePolyline         String?       @db.Text
+  routeSummary          String?       @db.VarChar(200)
+  routeProvider         String        @db.VarChar(40)
+  // Commercials
+  pricingRuleId         String?       @db.Uuid
+  ratePerKm             Decimal       @db.Decimal(10, 2)
+  suggestedFreight      Decimal       @db.Decimal(12, 2)
+  customerOffer         Decimal       @db.Decimal(12, 2)
+  acceptedFreight       Decimal?      @db.Decimal(12, 2)
+  paymentStatus         PaymentStatus @default(PENDING)
+  // Loading
+  loadingDate           DateTime      @db.Date
+  loadingTime           String        @db.VarChar(5) // HH:mm, Asia/Kolkata
+  loadingContactName    String        @db.VarChar(120)
+  loadingContactPhone   String        @db.VarChar(15)
+  loadingInstructions   String?       @db.VarChar(1000)
+  // Delivery
+  expectedDeliveryDate  DateTime      @db.Date
+  deliveryContactName   String        @db.VarChar(120)
+  deliveryContactPhone  String        @db.VarChar(15)
+  deliveryInstructions  String?       @db.VarChar(1000)
+  // Lifecycle
+  offerExpiryHours      Int           @default(24)
+  confirmedAt           DateTime?
+  cancelledAt           DateTime?
+  cancellationReason    String?       @db.VarChar(500)
+  repeatedFromId        String?       @db.Uuid
+  isDemo                Boolean       @default(false)
+  /// PORTAL = created by the company; ADMIN_ASSISTED = created by an employee on the company's behalf.
+  source                String        @default("PORTAL") @db.VarChar(20)
+  /// For ADMIN_ASSISTED bookings: how the company authorised it (mode, reference, contact, time).
+  customerAuthorization Json?
+  version               Int           @default(0) // optimistic concurrency
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  company       Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy     User?                     @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  product       Product                   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  pricingRule   PricingRule?              @relation(fields: [pricingRuleId], references: [id], onDelete: SetNull)
+  repeatedFrom  Booking?                  @relation("BookingRepeat", fields: [repeatedFromId], references: [id], onDelete: SetNull)
+  repeats       Booking[]                 @relation("BookingRepeat")
+  locations     BookingLocation[]
+  requirement   BookingRequirement?
+  statusHistory BookingStatusHistory[]
+  offers        TransporterOffer[]
+  negotiations  OfferNegotiationHistory[]
+  allocations   BookingAllocation[]
+  trips         Trip[]
+  tripDocuments TripDocument[]
+  payments      Payment[]
+  invoices      Invoice[]
+  notifications Notification[]
+  tickets       SupportTicket[]
+  ignoredBy     BookingIgnore[]
+
+  @@index([companyId, status, createdAt])
+  @@index([companyId, createdAt])
+  @@map("bookings")
+}
+
+model BookingLocation {
+  id              String              @id @default(uuid()) @db.Uuid
+  bookingId       String              @db.Uuid
+  type            BookingLocationType
+  sequence        Int                 @default(0) // future multi-drop support
+  address         String              @db.VarChar(400)
+  placeId         String?             @db.VarChar(300)
+  latitude        Decimal             @db.Decimal(9, 6)
+  longitude       Decimal             @db.Decimal(9, 6)
+  city            String?             @db.VarChar(80)
+  state           String?             @db.VarChar(80)
+  pincode         String?             @db.VarChar(6)
+  savedLocationId String?             @db.Uuid
+  createdAt       DateTime            @default(now())
+
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  savedLocation SavedLocation? @relation(fields: [savedLocationId], references: [id], onDelete: SetNull)
+
+  @@unique([bookingId, type, sequence])
+  @@map("booking_locations")
+}
+
+model BookingRequirement {
+  id                     String               @id @default(uuid()) @db.Uuid
+  bookingId              String               @unique @db.Uuid
+  tankerCapacityKl       Decimal              @db.Decimal(6, 2)
+  quantityKl             Decimal              @db.Decimal(8, 2)
+  numberOfTankers        Int
+  tankerTypeId           String?              @db.Uuid
+  compartmentRequirement String?              @db.VarChar(40) // SINGLE | MULTI | ANY
+  productCompatibility   ProductCompatibility @default(ANY_COMPATIBLE)
+  specialRequirements    String?              @db.VarChar(1000)
+
+  booking    Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tankerType TankerType? @relation(fields: [tankerTypeId], references: [id], onDelete: SetNull)
+
+  @@map("booking_requirements")
+}
+
+model BookingStatusHistory {
+  id          String         @id @default(uuid()) @db.Uuid
+  bookingId   String         @db.Uuid
+  fromStatus  BookingStatus?
+  toStatus    BookingStatus
+  actorType   ActorType
+  actorUserId String?        @db.Uuid
+  note        String?        @db.VarChar(500)
+  createdAt   DateTime       @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+  @@map("booking_status_history")
+}
+
+// ---------------------------------------------------------------------------
+// Offers & negotiation
+// ---------------------------------------------------------------------------
+
+/// One negotiation thread per transporter per booking. currentAmount is the latest proposed price.
+model TransporterOffer {
+  id                      String      @id @default(uuid()) @db.Uuid
+  bookingId               String      @db.Uuid
+  transporterId           String      @db.Uuid
+  status                  OfferStatus @default(PENDING)
+  initialAmount           Decimal     @db.Decimal(12, 2)
+  currentAmount           Decimal     @db.Decimal(12, 2)
+  lastActionBy            ActorType
+  round                   Int         @default(1)
+  tankersAvailable        Int
+  tankerCapacityKl        Decimal     @db.Decimal(6, 2)
+  estimatedAvailabilityAt DateTime
+  remarks                 String?     @db.VarChar(500)
+  expiresAt               DateTime
+  submittedById           String?     @db.Uuid // transporter user (null for demo seeds)
+  isDemo                  Boolean     @default(false)
+  version                 Int         @default(0)
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  closedAt                DateTime?
+
+  booking     Booking                   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  transporter Agency                    @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+  history     OfferNegotiationHistory[]
+  allocation  BookingAllocation?
+
+  @@unique([bookingId, transporterId])
+  @@index([bookingId, status])
+  @@index([status, expiresAt])
+  @@map("transporter_offers")
+}
+
+model OfferNegotiationHistory {
+  id          String            @id @default(uuid()) @db.Uuid
+  offerId     String            @db.Uuid
+  bookingId   String            @db.Uuid
+  party       ActorType
+  action      NegotiationAction
+  amount      Decimal?          @db.Decimal(12, 2)
+  message     String?           @db.VarChar(500)
+  actorUserId String?           @db.Uuid
+  isDemo      Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+
+  offer   TransporterOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  booking Booking          @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([offerId, createdAt])
+  @@index([bookingId, createdAt])
+  @@map("offer_negotiation_history")
+}
+
+/// A confirmed award of (part of) a booking to one transporter. One allocation per accepted offer;
+/// several allocations per booking enable partial fulfilment across transporters in a later phase.
+model BookingAllocation {
+  id               String           @id @default(uuid()) @db.Uuid
+  bookingId        String           @db.Uuid
+  offerId          String           @unique @db.Uuid
+  transporterId    String           @db.Uuid
+  tankersAllocated Int
+  agreedFreight    Decimal          @db.Decimal(12, 2)
+  status           AllocationStatus @default(CONFIRMED)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  booking     Booking          @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  offer       TransporterOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+  transporter Agency           @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+  trips       Trip[]
+
+  @@index([bookingId])
+  @@map("booking_allocations")
+}
+
+// ---------------------------------------------------------------------------
+// Trips & tracking
+// ---------------------------------------------------------------------------
+
+model Trip {
+  id                  String     @id @default(uuid()) @db.Uuid
+  tripCode            String     @unique @db.VarChar(14)
+  allocationId        String     @db.Uuid
+  bookingId           String     @db.Uuid
+  transporterId       String     @db.Uuid
+  tankerId            String?    @db.Uuid
+  driverId            String?    @db.Uuid
+  status              TripStatus @default(SCHEDULED)
+  plannedDistanceKm   Decimal    @db.Decimal(10, 2)
+  distanceTravelledKm Decimal    @default(0) @db.Decimal(10, 2)
+  lastLatitude        Decimal?   @db.Decimal(9, 6)
+  lastLongitude       Decimal?   @db.Decimal(9, 6)
+  lastGpsAt           DateTime?
+  etaAt               DateTime?
+  startedAt           DateTime?
+  loadedAt            DateTime?
+  deliveredAt         DateTime?
+  completedAt         DateTime?
+  isSimulated         Boolean    @default(false) // tracking data is SIMULATED (demo) - label it in every UI
+  plannedStartAt      DateTime? // resource window; a DB exclusion constraint forbids overlapping tanker/driver windows
+  plannedEndAt        DateTime?
+  exception           String?    @db.VarChar(12) // DELAYED | EMERGENCY (flag alongside the normal status)
+  driverAcceptedAt    DateTime?
+  releasedAt          DateTime? // when the tanker was released back to the fleet
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  allocation  BookingAllocation @relation(fields: [allocationId], references: [id], onDelete: Restrict)
+  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  transporter Agency            @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+  tanker      Tanker?           @relation(fields: [tankerId], references: [id], onDelete: SetNull)
+  driver      Driver?           @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  tracking    TripTracking[]
+  documents   TripDocument[]
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("trips")
+}
+
+model TripTracking {
+  id         String         @id @default(uuid()) @db.Uuid
+  tripId     String         @db.Uuid
+  latitude   Decimal        @db.Decimal(9, 6)
+  longitude  Decimal        @db.Decimal(9, 6)
+  speedKmph  Decimal?       @db.Decimal(5, 1)
+  heading    Int?
+  source     TrackingSource
+  recordedAt DateTime
+  createdAt  DateTime       @default(now())
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId, recordedAt])
+  @@map("trip_tracking")
+}
+
+model TripDocument {
+  id                String           @id @default(uuid()) @db.Uuid
+  tripId            String           @db.Uuid
+  bookingId         String           @db.Uuid
+  type              TripDocumentType
+  title             String           @db.VarChar(120)
+  fileName          String           @db.VarChar(200)
+  storageKey        String           @unique @db.VarChar(200)
+  mimeType          String           @db.VarChar(80)
+  sizeBytes         Int
+  sharedWithCompany Boolean          @default(true)
+  uploadedById      String?          @db.Uuid
+  isDemo            Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+
+  trip    Trip    @relation(fields: [tripId], references: [id], onDelete: Restrict)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId])
+  @@map("trip_documents")
+}
+
+// ---------------------------------------------------------------------------
+// Payments & invoices (financial rows are never deleted - FKs are RESTRICT)
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id                String           @id @default(uuid()) @db.Uuid
+  receiptNumber     String?          @unique @db.VarChar(16) // assigned when PAID
+  bookingId         String           @db.Uuid
+  companyId         String           @db.Uuid
+  purpose           PaymentPurpose
+  amount            Decimal          @db.Decimal(12, 2)
+  currency          String           @default("INR") @db.Char(3)
+  status            PaymentTxnStatus @default(CREATED)
+  provider          PaymentProvider
+  providerOrderId   String           @unique @db.VarChar(60)
+  providerPaymentId String?          @unique @db.VarChar(60)
+  method            PaymentMethod?
+  signatureVerified Boolean          @default(false)
+  failureReason     String?          @db.VarChar(300)
+  gatewayPayload    Json?
+  paidAt            DateTime?
+  createdById       String?          @db.Uuid
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  createdBy User?   @relation("PaymentInitiator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model Invoice {
+  id            String        @id @default(uuid()) @db.Uuid
+  invoiceNumber String        @unique @db.VarChar(16)
+  bookingId     String        @db.Uuid
+  companyId     String        @db.Uuid
+  freightAmount Decimal       @db.Decimal(12, 2)
+  platformFee   Decimal       @db.Decimal(12, 2)
+  gstPercent    Decimal       @db.Decimal(5, 2)
+  gstAmount     Decimal       @db.Decimal(12, 2)
+  totalAmount   Decimal       @db.Decimal(12, 2)
+  status        InvoiceStatus @default(ISSUED)
+  issuedAt      DateTime      @default(now())
+  dueAt         DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, issuedAt])
+  @@map("invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  companyId String?          @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(160)
+  message   String           @db.VarChar(500)
+  bookingId String?          @db.Uuid
+  link      String?          @db.VarChar(200)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company    Company?               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  booking    Booking?               @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// Outbound delivery attempts per channel (SMS / WhatsApp / email adapters plug in here).
+model NotificationDelivery {
+  id             String              @id @default(uuid()) @db.Uuid
+  notificationId String              @db.Uuid
+  channel        NotificationChannel
+  status         DeliveryStatus
+  providerRef    String?             @db.VarChar(120)
+  error          String?             @db.VarChar(300)
+  createdAt      DateTime            @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@map("notification_deliveries")
+}
+
+model NotificationPreference {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @unique @db.Uuid
+  preferences Json // { [category]: { inApp, sms, whatsapp, email } }
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Support
+// ---------------------------------------------------------------------------
+
+model SupportTicket {
+  id                 String         @id @default(uuid()) @db.Uuid
+  ticketNumber       String         @unique @db.VarChar(12) // TKT000001
+  companyId          String?        @db.Uuid // the raising tenant: a company or a transporter
+  transporterId      String?        @db.Uuid
+  bookingId          String?        @db.Uuid
+  category           TicketCategory
+  subject            String         @db.VarChar(160)
+  description        String         @db.VarChar(4000)
+  status             TicketStatus   @default(OPEN)
+  priority           String         @default("MEDIUM") @db.VarChar(10) // LOW | MEDIUM | HIGH | URGENT
+  assignedEmployeeId String?        @db.Uuid
+  raisedByType       ActorType      @default(COMPANY)
+  resolutionNote     String?        @db.VarChar(1000)
+  resolvedAt         DateTime?
+  createdById        String?        @db.Uuid
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  company     Company?            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  transporter Agency?             @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+  booking     Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdBy   User?               @relation("TicketCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  attachments SupportAttachment[]
+  activities  ComplaintActivity[]
+
+  @@index([companyId, status, createdAt])
+  @@index([transporterId, status, createdAt])
+  @@map("support_tickets")
+}
+
+model SupportAttachment {
+  id         String   @id @default(uuid()) @db.Uuid
+  ticketId   String   @db.Uuid
+  fileName   String   @db.VarChar(200)
+  storageKey String   @unique @db.VarChar(200)
+  mimeType   String   @db.VarChar(80)
+  sizeBytes  Int
+  createdAt  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("support_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Audit (business actions; authentication events live in LoginAudit)
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id            String    @id @default(uuid()) @db.Uuid
+  actorUserId   String?   @db.Uuid
+  actorType     ActorType
+  companyId     String?   @db.Uuid
+  action        String    @db.VarChar(80) // e.g. booking.created, offer.accepted
+  entityType    String    @db.VarChar(40)
+  entityId      String?   @db.Uuid
+  metadata      Json?
+  module        String?   @db.VarChar(40)
+  actorRole     String?   @db.VarChar(40)
+  previousValue Json?
+  newValue      Json?
+  sessionId     String?   @db.VarChar(64)
+  ipAddress     String?   @db.VarChar(64)
+  userAgent     String?   @db.VarChar(300)
+  /// Hash chain: hash = sha256(prevHash + canonical row). Any edit or deletion breaks the chain.
+  prevHash      String?   @db.Char(64)
+  hash          String?   @db.Char(64)
+  createdAt     DateTime  @default(now())
+
+  actor   User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ===========================================================================
+// SECTION 3 - ADMIN & BACK-OFFICE (Super Admin + employees)
+// Reuses User, Company, Agency (transporter), Driver, Tanker, Booking, Offer, Trip, Payment and
+// SupportTicket. Only administrative data lives here.
+// ===========================================================================
+
+enum HazardousTraining {
+  NOT_PROVIDED
+  PENDING
+  VALID
+  EXPIRED
+  NOT_REQUIRED
+}
+
+enum DataScope {
+  ALL // sees every record of the modules it may access
+  ASSIGNED // sees only records assigned to the employee (and their own leads/tasks)
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ON_LEAVE
+  RESIGNED
+  TERMINATED
+}
+
+/// Admin-configurable employee role (Sales Executive, Accounts Executive, ...).
+model EmployeeRole {
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique @db.VarChar(40)
+  name        String    @db.VarChar(80)
+  description String?   @db.VarChar(300)
+  dataScope   DataScope @default(ASSIGNED)
+  isSystem    Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  permissions EmployeeRolePermission[]
+  employees   Employee[]
+  kpiTargets  KpiTarget[]
+
+  @@map("employee_roles")
+}
+
+/// Module x action permission granted to an employee role (keys "adm.<module>.<action>" in Permission).
+model EmployeeRolePermission {
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       EmployeeRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("employee_role_permissions")
+}
+
+model Employee {
+  id                 String           @id @default(uuid()) @db.Uuid
+  employeeCode       String           @unique @db.VarChar(12) // EMP0001
+  userId             String           @unique @db.Uuid
+  roleId             String           @db.Uuid
+  designation        String           @db.VarChar(80)
+  department         String           @db.VarChar(80)
+  reportingManagerId String?          @db.Uuid
+  joiningDate        DateTime         @db.Date
+  employmentStatus   EmploymentStatus @default(ACTIVE)
+  loginEnabled       Boolean          @default(true)
+  employmentType     String?          @db.VarChar(20)
+  branch             String?          @db.VarChar(80)
+  territory          String?          @db.VarChar(80)
+  createdById        String?          @db.Uuid
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                EmployeeRole                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  reportingManager    Employee?                    @relation("Reporting", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  reports             Employee[]                   @relation("Reporting")
+  permissionOverrides EmployeePermissionOverride[]
+  assignments         EmployeeAssignment[]
+  tasks               EmployeeTask[]               @relation("TaskAssignee")
+  leads               Lead[]                       @relation("LeadOwner")
+  followUps           FollowUp[]
+  kpiTargets          KpiTarget[]
+  attendance          EmployeeAttendance[]
+  leaves              LeaveApplication[]
+  leaveBalances       LeaveBalance[]
+  misReports          DailyMisReport[]
+  kpiActuals          KpiActual[]
+
+  @@index([roleId])
+  @@map("employees")
+}
+
+/// Per-employee grant/deny on top of the role (deny wins).
+model EmployeePermissionOverride {
+  employeeId   String @db.Uuid
+  permissionId String @db.Uuid
+  effect       String @db.VarChar(5) // GRANT | DENY
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, permissionId])
+  @@map("employee_permission_overrides")
+}
+
+/// Ownership of companies / transporters / complaints by employees (history kept via endedAt).
+model EmployeeAssignment {
+  id           String    @id @default(uuid()) @db.Uuid
+  employeeId   String    @db.Uuid
+  entityType   String    @db.VarChar(20) // COMPANY | TRANSPORTER
+  entityId     String    @db.Uuid
+  assignedById String?   @db.Uuid
+  assignedAt   DateTime  @default(now())
+  endedAt      DateTime?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId, endedAt])
+  @@index([employeeId, entityType, endedAt])
+  @@map("employee_assignments")
+}
+
+model EmployeeTask {
+  id                   String    @id @default(uuid()) @db.Uuid
+  taskCode             String    @unique @db.VarChar(14)
+  title                String    @db.VarChar(160)
+  description          String?   @db.VarChar(2000)
+  assigneeId           String    @db.Uuid
+  createdById          String?   @db.Uuid
+  dueAt                DateTime?
+  priority             String    @default("MEDIUM") @db.VarChar(10)
+  status               String    @default("OPEN") @db.VarChar(15) // OPEN (shown as New) | IN_PROGRESS | PENDING | ON_HOLD | DONE (Completed) | CANCELLED
+  relatedType          String?   @db.VarChar(20)
+  relatedId            String?   @db.Uuid
+  completedAt          DateTime?
+  startAt              DateTime?
+  completionRemarks    String?   @db.VarChar(1000)
+  relatedCompanyId     String?   @db.Uuid
+  relatedTransporterId String?   @db.Uuid
+  relatedBookingId     String?   @db.Uuid
+  reminderAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  assignee   Employee               @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Cascade)
+  activities EmployeeTaskActivity[]
+
+  @@index([assigneeId, status])
+  @@map("employee_tasks")
+}
+
+// ---- Leads (CRM) -------------------------------------------------------------------------
+
+model Lead {
+  id                  String    @id @default(uuid()) @db.Uuid
+  leadCode            String    @unique @db.VarChar(14) // LD000001
+  leadType            String    @db.VarChar(15) // COMPANY | TRANSPORTER | DRIVER
+  name                String    @db.VarChar(160) // business or person name
+  normalizedName      String    @db.VarChar(160)
+  contactPerson       String?   @db.VarChar(120)
+  phone               String    @db.VarChar(15) // normalised 10-digit
+  email               String?   @db.VarChar(254)
+  gstNumber           String?   @db.VarChar(15)
+  city                String?   @db.VarChar(80)
+  state               String?   @db.VarChar(80)
+  source              String    @db.VarChar(30)
+  status              String    @default("NEW") @db.VarChar(25)
+  assignedEmployeeId  String?   @db.Uuid
+  nextFollowUpAt      DateTime?
+  whatsapp            String?   @db.VarChar(15)
+  businessType        String?   @db.VarChar(40)
+  address             String?   @db.VarChar(300)
+  priority            String    @default("MEDIUM") @db.VarChar(10)
+  lostReason          String?   @db.VarChar(300)
+  deletedAt           DateTime?
+  remarks             String?   @db.VarChar(2000)
+  convertedEntityType String?   @db.VarChar(20)
+  convertedEntityId   String?   @db.Uuid
+  convertedAt         DateTime?
+  createdById         String?   @db.Uuid
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  owner      Employee?      @relation("LeadOwner", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  activities LeadActivity[]
+  documents  LeadDocument[]
+  followUps  FollowUp[]
+
+  @@unique([leadType, phone])
+  @@index([assignedEmployeeId, status])
+  @@index([status, nextFollowUpAt])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id              String   @id @default(uuid()) @db.Uuid
+  leadId          String   @db.Uuid
+  type            String   @db.VarChar(20) // CALL | MEETING | NOTE | STATUS_CHANGE | ASSIGNMENT | TRANSFER | FOLLOW_UP | CONVERSION
+  connected       Boolean?
+  outcome         String?  @db.VarChar(120)
+  durationSeconds Int?
+  notes           String?  @db.VarChar(2000)
+  fromValue       String?  @db.VarChar(80)
+  toValue         String?  @db.VarChar(80)
+  actorId         String?  @db.Uuid // user id
+  createdAt       DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([actorId, type, createdAt])
+  @@map("lead_activities")
+}
+
+model FollowUp {
+  id           String    @id @default(uuid()) @db.Uuid
+  leadId       String    @db.Uuid
+  employeeId   String?   @db.Uuid
+  dueAt        DateTime
+  notes        String?   @db.VarChar(1000)
+  status       String    @default("PENDING") @db.VarChar(10) // PENDING | DONE | MISSED
+  followUpType String    @default("PHONE_CALL") @db.VarChar(15)
+  callOutcome  String?   @db.VarChar(25)
+  outcome      String?   @db.VarChar(300)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  lead     Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, status, dueAt])
+  @@map("follow_ups")
+}
+
+// ---- KPIs ---------------------------------------------------------------------------------
+
+model KpiDefinition {
+  code           String   @id @db.VarChar(40)
+  name           String   @db.VarChar(120)
+  category       String   @db.VarChar(20) // SALES | OPERATIONS | VERIFICATION
+  unit           String   @default("count") @db.VarChar(20)
+  higherIsBetter Boolean  @default(true)
+  description    String?  @db.VarChar(300)
+  createdAt      DateTime @default(now())
+
+  targets KpiTarget[]
+  actuals KpiActual[]
+
+  @@map("kpi_definitions")
+}
+
+/// Monthly target per role (or per employee, which overrides the role target).
+model KpiTarget {
+  id            String   @id @default(uuid()) @db.Uuid
+  kpiCode       String   @db.VarChar(40)
+  roleId        String?  @db.Uuid
+  employeeId    String?  @db.Uuid
+  monthlyTarget Decimal  @db.Decimal(12, 2)
+  weightage     Int      @default(10)
+  updatedById   String?  @db.Uuid
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  kpi      KpiDefinition @relation(fields: [kpiCode], references: [code], onDelete: Cascade)
+  role     EmployeeRole? @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  employee Employee?     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([kpiCode, roleId, employeeId])
+  @@map("kpi_targets")
+}
+
+/// Frozen monthly KPI values (live values are always recomputed from source records).
+model KpiActual {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  kpiCode     String   @db.VarChar(40)
+  periodStart DateTime @db.Date
+  value       Decimal  @db.Decimal(14, 2)
+  computedAt  DateTime @default(now())
+
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kpi      KpiDefinition @relation(fields: [kpiCode], references: [code], onDelete: Cascade)
+
+  @@unique([employeeId, kpiCode, periodStart])
+  @@map("kpi_actuals")
+}
+
+// ---- Commission, settlements, adjustments --------------------------------------------------
+
+/// Versioned commission rule. Editing creates a new version; old versions stay for history.
+model CommissionRule {
+  id                  String    @id @default(uuid()) @db.Uuid
+  ruleCode            String    @db.VarChar(20) // stable across versions
+  version             Int       @default(1)
+  name                String    @db.VarChar(120)
+  calcType            String    @db.VarChar(10) // PERCENT | FIXED
+  value               Decimal   @db.Decimal(12, 2)
+  companyCategory     String?   @db.VarChar(40) // BusinessType
+  transporterCategory String?   @db.VarChar(40)
+  originState         String?   @db.VarChar(80)
+  destState           String?   @db.VarChar(80)
+  bookingType         String?   @db.VarChar(20) // PORTAL | ADMIN_ASSISTED
+  promoCode           String?   @db.VarChar(30)
+  priority            Int       @default(0)
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  isActive            Boolean   @default(true)
+  supersededAt        DateTime?
+  createdById         String?   @db.Uuid
+  createdAt           DateTime  @default(now())
+
+  commissions BookingCommission[]
+
+  @@unique([ruleCode, version])
+  @@index([isActive, effectiveFrom])
+  @@map("commission_rules")
+}
+
+/// Commission computed for one allocation (freight - commission = transporter payable).
+model BookingCommission {
+  id                 String   @id @default(uuid()) @db.Uuid
+  allocationId       String   @unique @db.Uuid
+  bookingId          String   @db.Uuid
+  transporterId      String   @db.Uuid
+  ruleId             String?  @db.Uuid
+  freightAmount      Decimal  @db.Decimal(12, 2)
+  commissionAmount   Decimal  @db.Decimal(12, 2)
+  transporterPayable Decimal  @db.Decimal(12, 2)
+  computedAt         DateTime @default(now())
+
+  rule CommissionRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([transporterId, computedAt])
+  @@map("booking_commissions")
+}
+
+model Settlement {
+  id             String    @id @default(uuid()) @db.Uuid
+  settlementCode String    @unique @db.VarChar(16)
+  transporterId  String    @db.Uuid
+  allocationId   String    @unique @db.Uuid
+  amount         Decimal   @db.Decimal(12, 2)
+  status         String    @default("PENDING") @db.VarChar(12) // PENDING | ON_HOLD | SETTLED
+  reference      String?   @db.VarChar(80)
+  settledAt      DateTime?
+  approvedById   String?   @db.Uuid
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  transporter Agency @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@map("settlements")
+}
+
+/// Authorised correction of an accepted freight price (never edited in place). Two-person rule.
+model FreightAdjustment {
+  id             String    @id @default(uuid()) @db.Uuid
+  allocationId   String    @db.Uuid
+  bookingId      String    @db.Uuid
+  previousAmount Decimal   @db.Decimal(12, 2)
+  newAmount      Decimal   @db.Decimal(12, 2)
+  reason         String    @db.VarChar(500)
+  status         String    @default("REQUESTED") @db.VarChar(10) // REQUESTED | APPROVED | REJECTED
+  requestedById  String    @db.Uuid
+  reviewedById   String?   @db.Uuid
+  reviewNote     String?   @db.VarChar(500)
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([bookingId])
+  @@map("freight_adjustments")
+}
+
+model RefundRequest {
+  id            String    @id @default(uuid()) @db.Uuid
+  paymentId     String    @db.Uuid
+  amount        Decimal   @db.Decimal(12, 2)
+  reason        String    @db.VarChar(500)
+  status        String    @default("REQUESTED") @db.VarChar(12) // REQUESTED | APPROVED | REJECTED | PROCESSED
+  requestedById String    @db.Uuid
+  approvedById  String?   @db.Uuid
+  reviewNote    String?   @db.VarChar(500)
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([paymentId])
+  @@map("refund_requests")
+}
+
+model ReconciliationLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  paymentId     String   @db.Uuid
+  result        String   @db.VarChar(12) // MATCHED | MISMATCH | NOT_FOUND
+  gatewayStatus String?  @db.VarChar(30)
+  details       Json?
+  performedById String?  @db.Uuid
+  createdAt     DateTime @default(now())
+
+  @@index([paymentId, createdAt])
+  @@map("reconciliation_logs")
+}
+
+// ---- Subscriptions & services -------------------------------------------------------------
+
+model SubscriptionPlan {
+  id            String   @id @default(uuid()) @db.Uuid
+  code          String   @unique @db.VarChar(30)
+  name          String   @db.VarChar(80)
+  userCategory  String   @db.VarChar(15) // COMPANY | TRANSPORTER
+  price         Decimal  @db.Decimal(12, 2)
+  validityDays  Int
+  features      String[] @default([])
+  bookingLimit  Int?
+  priorityLevel Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id               String   @id @default(uuid()) @db.Uuid
+  subscriptionCode String   @unique @db.VarChar(16)
+  planId           String   @db.Uuid
+  subscriberType   String   @db.VarChar(15) // COMPANY | TRANSPORTER
+  companyId        String?  @db.Uuid
+  transporterId    String?  @db.Uuid
+  startAt          DateTime
+  endAt            DateTime
+  amount           Decimal  @db.Decimal(12, 2)
+  status           String   @default("ACTIVE") @db.VarChar(12) // ACTIVE | EXPIRED | CANCELLED
+  autoRenew        Boolean  @default(false)
+  renewedFromId    String?  @db.Uuid
+  createdById      String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  plan SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([status, endAt])
+  @@map("subscriptions")
+}
+
+model Service {
+  id                      String   @id @default(uuid()) @db.Uuid
+  serviceCode             String   @unique @db.VarChar(14)
+  name                    String   @db.VarChar(120)
+  category                String   @db.VarChar(40)
+  description             String?  @db.VarChar(1000)
+  sellingPrice            Decimal  @db.Decimal(12, 2)
+  costPrice               Decimal  @db.Decimal(12, 2)
+  taxRate                 Decimal  @default(18) @db.Decimal(5, 2)
+  availability            String   @default("AVAILABLE") @db.VarChar(15)
+  requiresLicensedPartner Boolean  @default(false) // insurance / financial services
+  partnerName             String?  @db.VarChar(120)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  orders ServiceOrder[]
+
+  @@map("services")
+}
+
+model ServiceOrder {
+  id                 String   @id @default(uuid()) @db.Uuid
+  orderCode          String   @unique @db.VarChar(16)
+  serviceId          String   @db.Uuid
+  customerType       String   @db.VarChar(15) // COMPANY | TRANSPORTER
+  companyId          String?  @db.Uuid
+  transporterId      String?  @db.Uuid
+  quantity           Int      @default(1)
+  unitPrice          Decimal  @db.Decimal(12, 2)
+  taxAmount          Decimal  @db.Decimal(12, 2)
+  totalAmount        Decimal  @db.Decimal(12, 2)
+  costAmount         Decimal  @db.Decimal(12, 2)
+  status             String   @default("REQUESTED") @db.VarChar(12) // REQUESTED | CONFIRMED | FULFILLED | CANCELLED
+  requestType        String   @default("ORDER") @db.VarChar(10) // ORDER | ENQUIRY | CALLBACK
+  assignedEmployeeId String?  @db.Uuid
+  notes              String?  @db.VarChar(1000)
+  createdById        String?  @db.Uuid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@map("service_orders")
+}
+
+// ---- KYC & verification -------------------------------------------------------------------
+
+/// Documents for transporters, drivers and tankers (company documents stay in company_documents).
+model KycDocument {
+  id           String               @id @default(uuid()) @db.Uuid
+  ownerType    String               @db.VarChar(15) // TRANSPORTER | DRIVER | TANKER
+  ownerId      String               @db.Uuid
+  docType      String               @db.VarChar(40)
+  title        String?              @db.VarChar(120)
+  fileName     String               @db.VarChar(200)
+  storageKey   String               @unique @db.VarChar(200)
+  mimeType     String               @db.VarChar(80)
+  sizeBytes    Int
+  status       DocumentReviewStatus @default(UPLOADED)
+  reviewNote   String?              @db.VarChar(500)
+  expiryDate   DateTime?            @db.Date
+  isCurrent    Boolean              @default(true)
+  uploadedById String?              @db.Uuid
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([ownerType, ownerId, isCurrent])
+  @@index([status])
+  @@index([expiryDate])
+  @@map("kyc_documents")
+}
+
+/// Configurable compliance: which documents are mandatory for which product / tanker type / owner.
+model ComplianceRule {
+  id             String   @id @default(uuid()) @db.Uuid
+  ownerType      String   @db.VarChar(15) // TRANSPORTER | DRIVER | TANKER | COMPANY
+  docType        String   @db.VarChar(40)
+  productId      String?  @db.Uuid // null = applies to every product
+  tankerTypeId   String?  @db.Uuid
+  isMandatory    Boolean  @default(true)
+  requiresExpiry Boolean  @default(false)
+  description    String?  @db.VarChar(300)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@index([ownerType, isActive])
+  @@map("compliance_rules")
+}
+
+/// Every verification decision (company, transporter, driver, tanker, document).
+model VerificationReview {
+  id         String   @id @default(uuid()) @db.Uuid
+  entityType String   @db.VarChar(20)
+  entityId   String   @db.Uuid
+  fromStatus String?  @db.VarChar(25)
+  toStatus   String   @db.VarChar(25)
+  reason     String?  @db.VarChar(500)
+  reviewerId String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([reviewerId, createdAt])
+  @@map("verification_reviews")
+}
+
+model EntityNote {
+  id         String   @id @default(uuid()) @db.Uuid
+  entityType String   @db.VarChar(20)
+  entityId   String   @db.Uuid
+  note       String   @db.VarChar(2000)
+  authorId   String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@map("entity_notes")
+}
+
+model DriverTransporterHistory {
+  id            String    @id @default(uuid()) @db.Uuid
+  driverId      String    @db.Uuid
+  transporterId String    @db.Uuid
+  fromDate      DateTime  @default(now())
+  toDate        DateTime?
+  reason        String?   @db.VarChar(300)
+
+  driver      Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  transporter Agency @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+
+  @@index([driverId])
+  @@map("driver_transporter_history")
+}
+
+// ---- Trip operations ----------------------------------------------------------------------
+
+model TripStatusHistory {
+  id           String      @id @default(uuid()) @db.Uuid
+  tripId       String      @db.Uuid
+  fromStatus   TripStatus?
+  toStatus     TripStatus
+  isCorrection Boolean     @default(false)
+  reason       String?     @db.VarChar(500)
+  latitude     Decimal?    @db.Decimal(9, 6)
+  longitude    Decimal?    @db.Decimal(9, 6)
+  actorType    ActorType
+  actorUserId  String?     @db.Uuid
+  createdAt    DateTime    @default(now())
+
+  @@index([tripId, createdAt])
+  @@map("trip_status_history")
+}
+
+model TripAlert {
+  id             String    @id @default(uuid()) @db.Uuid
+  tripId         String    @db.Uuid
+  type           String    @db.VarChar(25) // ROUTE_DEVIATION | GPS_OFFLINE | EXTENDED_STOPPAGE | DELAYED_DELIVERY | GEOFENCE_ENTRY | GEOFENCE_EXIT | EMERGENCY
+  severity       String    @default("MEDIUM") @db.VarChar(10)
+  message        String    @db.VarChar(300)
+  isSimulated    Boolean   @default(false)
+  detectedAt     DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolvedById   String?   @db.Uuid
+  resolutionNote String?   @db.VarChar(500)
+
+  @@index([tripId, type, resolvedAt])
+  @@map("trip_alerts")
+}
+
+// ---- Complaints, notifications ------------------------------------------------------------
+
+model ComplaintActivity {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @db.Uuid
+  type      String   @db.VarChar(20) // NOTE | STATUS | ASSIGN | PRIORITY | DOCUMENT_REQUEST | REOPEN
+  message   String?  @db.VarChar(2000)
+  internal  Boolean  @default(true)
+  fromValue String?  @db.VarChar(40)
+  toValue   String?  @db.VarChar(40)
+  actorId   String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("complaint_activities")
+}
+
+model NotificationTemplate {
+  id                 String              @id @default(uuid()) @db.Uuid
+  code               String              @unique @db.VarChar(60)
+  name               String              @db.VarChar(120)
+  event              String              @db.VarChar(40)
+  channel            NotificationChannel
+  subject            String?             @db.VarChar(200)
+  body               String              @db.VarChar(2000) // {{placeholders}}
+  providerTemplateId String?             @db.VarChar(80) // DLT / WhatsApp approved template id
+  isActive           Boolean             @default(true)
+  version            Int                 @default(1)
+  updatedById        String?             @db.Uuid
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@map("notification_templates")
+}
+
+model NotificationBroadcast {
+  id         String   @id @default(uuid()) @db.Uuid
+  title      String   @db.VarChar(160)
+  message    String   @db.VarChar(500)
+  audience   String   @db.VarChar(30) // ALL_COMPANIES | VERIFIED_COMPANIES | SELECTED_COMPANIES | EMPLOYEES
+  channels   String[] @default([])
+  recipients Int      @default(0)
+  sentById   String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@map("notification_broadcasts")
+}
+
+// ===========================================================================
+// SECTION 4 - TRANSPORTER PORTAL (additions; everything else reuses Sections 1-3)
+// ===========================================================================
+
+model TransporterContact {
+  id            String   @id @default(uuid()) @db.Uuid
+  transporterId String   @db.Uuid
+  name          String   @db.VarChar(120)
+  designation   String?  @db.VarChar(80)
+  phone         String   @db.VarChar(15)
+  email         String?  @db.VarChar(254)
+  isPrimary     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transporter Agency @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+
+  @@index([transporterId])
+  @@map("transporter_contacts")
+}
+
+/// Payout account. Changes never edit a row: a new row is added and the old one superseded, for audit.
+model TransporterBankAccount {
+  id               String   @id @default(uuid()) @db.Uuid
+  transporterId    String   @db.Uuid
+  accountHolder    String   @db.VarChar(120)
+  bankName         String   @db.VarChar(120)
+  accountNumberEnc String   @db.VarChar(200) // AES-256-GCM; never returned to clients
+  accountLast4     String   @db.Char(4)
+  ifsc             String   @db.Char(11)
+  accountType      String   @db.VarChar(15) // SAVINGS | CURRENT
+  status           String   @default("PENDING_REVIEW") @db.VarChar(15) // PENDING_REVIEW | VERIFIED | REJECTED
+  isCurrent        Boolean  @default(true)
+  createdById      String?  @db.Uuid
+  createdAt        DateTime @default(now())
+
+  transporter Agency @relation(fields: [transporterId], references: [id], onDelete: Restrict)
+
+  @@index([transporterId, isCurrent])
+  @@map("transporter_bank_accounts")
+}
+
+model TankerCompartment {
+  id         String  @id @default(uuid()) @db.Uuid
+  tankerId   String  @db.Uuid
+  position   Int
+  capacityKl Decimal @db.Decimal(6, 2)
+
+  tanker Tanker @relation(fields: [tankerId], references: [id], onDelete: Cascade)
+
+  @@unique([tankerId, position])
+  @@map("tanker_compartments")
+}
+
+/// Date ranges a tanker cannot take work (blocked or under maintenance).
+model TankerAvailability {
+  id          String    @id @default(uuid()) @db.Uuid
+  tankerId    String    @db.Uuid
+  kind        String    @db.VarChar(12) // BLOCKED | MAINTENANCE
+  startAt     DateTime
+  endAt       DateTime
+  note        String?   @db.VarChar(300)
+  createdById String?   @db.Uuid
+  cancelledAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  tanker Tanker @relation(fields: [tankerId], references: [id], onDelete: Cascade)
+
+  @@index([tankerId, startAt])
+  @@map("tanker_availability")
+}
+
+/// "Ignore booking": hides a marketplace booking from one transporter.
+model BookingIgnore {
+  bookingId     String   @db.Uuid
+  transporterId String   @db.Uuid
+  createdAt     DateTime @default(now())
+
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  transporter Agency  @relation(fields: [transporterId], references: [id], onDelete: Cascade)
+
+  @@id([bookingId, transporterId])
+  @@map("booking_ignores")
+}
+
+// ===========================================================================
+// SECTION 5 - EMPLOYEE PORTAL (additions; identity, roles, leads, KPIs reuse Section 3)
+// ===========================================================================
+
+model LeadDocument {
+  id           String   @id @default(uuid()) @db.Uuid
+  leadId       String   @db.Uuid
+  title        String   @db.VarChar(120)
+  fileName     String   @db.VarChar(200)
+  storageKey   String   @unique @db.VarChar(200)
+  mimeType     String   @db.VarChar(80)
+  sizeBytes    Int
+  uploadedById String?  @db.Uuid
+  createdAt    DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_documents")
+}
+
+model EmployeeTaskActivity {
+  id         String   @id @default(uuid()) @db.Uuid
+  taskId     String   @db.Uuid
+  type       String   @db.VarChar(15) // CREATED | STATUS | TRANSFER | REMARK | ATTACHMENT
+  message    String?  @db.VarChar(1000)
+  fromValue  String?  @db.VarChar(40)
+  toValue    String?  @db.VarChar(40)
+  fileName   String?  @db.VarChar(200)
+  storageKey String?  @unique @db.VarChar(200)
+  mimeType   String?  @db.VarChar(80)
+  actorId    String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  task EmployeeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@map("employee_task_activities")
+}
+
+model EmployeeAttendance {
+  id               String    @id @default(uuid()) @db.Uuid
+  employeeId       String    @db.Uuid
+  date             DateTime  @db.Date // India working day
+  checkInAt        DateTime?
+  checkOutAt       DateTime?
+  breakMinutes     Int       @default(0)
+  breakStartedAt   DateTime?
+  workingMinutes   Int?
+  status           String    @default("PRESENT") @db.VarChar(15) // PRESENT | LATE | HALF_DAY | ABSENT | WEEKLY_OFF | HOLIDAY | ON_LEAVE
+  earlyDeparture   Boolean   @default(false)
+  checkInLatitude  Decimal?  @db.Decimal(9, 6) // only with the employee's explicit consent
+  checkInLongitude Decimal?  @db.Decimal(9, 6)
+  locationConsent  Boolean   @default(false)
+  remarks          String?   @db.VarChar(300)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  events   AttendanceEvent[]
+
+  @@unique([employeeId, date])
+  @@index([date, status])
+  @@map("employee_attendance")
+}
+
+model AttendanceEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  attendanceId String   @db.Uuid
+  type         String   @db.VarChar(12) // CHECK_IN | CHECK_OUT | BREAK_START | BREAK_END
+  at           DateTime @default(now())
+
+  attendance EmployeeAttendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+
+  @@index([attendanceId, at])
+  @@map("attendance_events")
+}
+
+/// Admin-configurable yearly entitlement per leave type.
+model LeavePolicy {
+  code        String  @id @db.VarChar(20) // CASUAL | EARNED | SICK | OTHER
+  name        String  @db.VarChar(60)
+  daysPerYear Decimal @db.Decimal(5, 1)
+  isActive    Boolean @default(true)
+
+  @@map("leave_policies")
+}
+
+model LeaveBalance {
+  id         String  @id @default(uuid()) @db.Uuid
+  employeeId String  @db.Uuid
+  leaveType  String  @db.VarChar(20)
+  year       Int
+  entitled   Decimal @db.Decimal(5, 1)
+  used       Decimal @default(0) @db.Decimal(5, 1)
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, leaveType, year])
+  @@map("leave_balances")
+}
+
+model LeaveApplication {
+  id           String    @id @default(uuid()) @db.Uuid
+  employeeId   String    @db.Uuid
+  leaveType    String    @db.VarChar(20)
+  startDate    DateTime  @db.Date
+  endDate      DateTime  @db.Date
+  days         Decimal   @db.Decimal(5, 1)
+  reason       String    @db.VarChar(500)
+  status       String    @default("PENDING") @db.VarChar(10) // PENDING | APPROVED | REJECTED | CANCELLED
+  fileName     String?   @db.VarChar(200)
+  storageKey   String?   @unique @db.VarChar(200)
+  mimeType     String?   @db.VarChar(80)
+  decidedById  String?   @db.Uuid
+  decisionNote String?   @db.VarChar(300)
+  decidedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, status])
+  @@index([status, startDate])
+  @@map("leave_applications")
+}
+
+/// One report per employee per working day. Corrections go through MisReportRevision.
+model DailyMisReport {
+  id          String   @id @default(uuid()) @db.Uuid
+  employeeId  String   @db.Uuid
+  date        DateTime @db.Date
+  reportType  String   @db.VarChar(15) // SALES | OPERATIONS | VERIFICATION | ACCOUNTS | GENERAL
+  data        Json
+  revision    Int      @default(0)
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee  Employee            @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  revisions MisReportRevision[]
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@map("daily_mis_reports")
+}
+
+model MisReportRevision {
+  id         String   @id @default(uuid()) @db.Uuid
+  reportId   String   @db.Uuid
+  revision   Int
+  previous   Json
+  reason     String   @db.VarChar(300)
+  editedById String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  report DailyMisReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, revision])
+  @@map("mis_report_revisions")
+}

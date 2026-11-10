@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "TankerLink",
+    "slug": "ttms-mobile",
+    "scheme": "ttms",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ttms.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TankerLink uses your location to update trip progress for your transporter and customer.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "TankerLink keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
+        "NSCameraUsageDescription": "TankerLink uses the camera to photograph delivery proof and trip documents."
+      }
+    },
+    "android": {
+      "package": "com.ttms.mobile",
+      "softwareKeyboardLayoutMode": "resize",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0d2a4b",
+          "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "TankerLink keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "TankerLink uses the camera to photograph delivery proof and trip documents."
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+/* TankerLink design tokens — electric blue on white/light grey, dark navy text */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe8fe;
+  --color-brand-200: #bfd6fe;
+  --color-brand-300: #93bbfd;
+  --color-brand-400: #6098fa;
+  --color-brand-500: #3b76f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #172f6e;
+  --color-brand-950: #0b1b3f;
+
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+
+  --color-surface: #ffffff;
+  --color-canvas: #f4f6fa;
+  --color-ink: #0b1b3f;
+  --color-muted: #5b6676;
+  --color-line: #e2e7ef;
+
+  --color-success: #15803d;
+  --color-warning: #ea580c;
+  --color-danger: #dc2626;
+
+  --radius-field: 0.625rem;
+  --shadow-card: 0 1px 2px rgb(11 27 63 / 0.04), 0 6px 20px rgb(11 27 63 / 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+/* Leaflet (development map) tweaks */
+.leaflet-container {
+  font: inherit;
+  background: #e8edf3;
+}
+.tl-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px 9999px 9999px 0;
+  transform: rotate(-45deg);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+.tl-pin > span {
+  transform: rotate(45deg);
+}
+.tl-truck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  background: #0b1b3f;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}

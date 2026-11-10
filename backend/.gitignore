@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.pgdata
+.pgdata-test
+coverage
+uploads
+uploads-test
+.pgdata-test*
+.pgdata*
