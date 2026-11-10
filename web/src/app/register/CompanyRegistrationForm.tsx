@@ -75,9 +75,25 @@ export function CompanyRegistrationForm() {
   const phoneOk = parsedPhone.success && verifiedFor.phone === parsedPhone.data && Boolean(tokens.phone);
   const emailOk = parsedEmail.success && verifiedFor.email === parsedEmail.data && Boolean(tokens.email);
 
+  /**
+   * Cross-field checks for one step. The schema's superRefine only runs once every field parses, so
+   * while later steps are still empty it is skipped — these must be checked here explicitly.
+   */
+  function crossFieldOk(s: number): boolean {
+    const v = getValues();
+    if (s === 0) {
+      const g = checkGstin(v.gstNumber ?? '');
+      if (!g.ok) return setFieldError('gstNumber', { type: 'custom', message: g.message }), false;
+      if (v.state && g.state !== v.state) return setFieldError('gstNumber', { type: 'custom', message: `This GSTIN is registered in ${g.state}` }), false;
+    }
+    if (s === 1 && v.password !== v.confirmPassword) return setFieldError('confirmPassword', { type: 'custom', message: 'Passwords do not match' }), false;
+    return true;
+  }
+
   async function next() {
     setError(null);
     if (!(await trigger(STEP_FIELDS[step]))) return;
+    if (!crossFieldOk(step)) return;
     if (step === 1 && (!phoneOk || !emailOk)) {
       setError('Verify both your mobile number and email address to continue.');
       return;
@@ -97,18 +113,31 @@ export function CompanyRegistrationForm() {
         phoneVerificationToken: tokens.phone,
         emailVerificationToken: tokens.email,
         deviceInfo: 'Web browser',
-      });
+      }, { timeout: 60_000 }); // one DB transaction with many writes; slow on a remote database
       setDone({ code: data.data.company.companyCode, name: values.companyName });
     } catch (e) {
       const err = applyApiError(e, setFieldError, KNOWN);
       setError(err.message);
-      const firstBad = STEP_FIELDS.findIndex((fields) => err.fields.some((f) => (fields as string[]).includes(f.field)));
+      // Duplicate-identity conflicts carry no field details: attach them to the field so the error sits
+      // next to the input the user has to change (and goes away once they fix it and continue).
+      const conflictField = ({ GST_ALREADY_REGISTERED: 'gstNumber', PHONE_ALREADY_REGISTERED: 'phone', EMAIL_ALREADY_REGISTERED: 'email' } as const)[
+        err.code as 'GST_ALREADY_REGISTERED' | 'PHONE_ALREADY_REGISTERED' | 'EMAIL_ALREADY_REGISTERED'
+      ];
+      if (conflictField) setFieldError(conflictField, { type: 'server', message: err.message });
+      const firstBad = STEP_FIELDS.findIndex((fields) => (conflictField && fields.includes(conflictField)) || err.fields.some((f) => (fields as string[]).includes(f.field)));
       if (firstBad >= 0) setStep(firstBad);
       if (err.code === 'INVALID_VERIFICATION_TOKEN') {
         setTokens({});
         setVerifiedFor({});
         setStep(1);
       }
+    }
+  }, (invalid) => {
+    // Validation failed on a field from an earlier step: go back there so the error is visible.
+    const bad = STEP_FIELDS.findIndex((fields) => fields.some((f) => invalid[f]));
+    if (bad >= 0) {
+      setStep(bad);
+      setError('Please fix the highlighted field before creating your account.');
     }
   });
 
@@ -251,7 +280,13 @@ export function CompanyRegistrationForm() {
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         {step > 0 ? (
-          <Button variant="secondary" onClick={() => setStep((s) => s - 1)}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setError(null);
+              setStep((s) => s - 1);
+            }}
+          >
             Back
           </Button>
         ) : (

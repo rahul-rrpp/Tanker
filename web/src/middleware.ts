@@ -2,14 +2,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-const PROTECTED = ['/company', '/transporter', '/employee', '/admin', '/agency', '/finance', '/customer', '/driver', '/account', '/pending-verification'];
+const PROTECTED = ['/company', '/transporter', '/employee', '/agency', '/finance', '/customer', '/driver', '/account', '/pending-verification'];
 const GUEST_ONLY = ['/login', '/register', '/signup', '/forgot-password', '/reset-password', '/verify-otp'];
 
 /**
  * Phase 1 releases only the Company Portal. Screens for other roles stay in the codebase (backend-ready)
  * but are not reachable unless NEXT_PUBLIC_ENABLED_PORTALS=all.
  */
-const LEGACY_PORTALS = ['/admin', '/agency', '/finance', '/customer', '/driver', '/account', '/pending-verification', '/signup', '/verify-otp'];
+const LEGACY_PORTALS = ['/agency', '/finance', '/customer', '/driver', '/account', '/pending-verification', '/signup', '/verify-otp'];
 const released = new Set((process.env.NEXT_PUBLIC_ENABLED_PORTALS ?? 'company').split(',').map((s) => s.trim()));
 const legacyEnabled = released.has('all');
 const hidden = (path: string) => {
@@ -58,6 +58,8 @@ export async function middleware(req: NextRequest) {
       const me = await fetch(`${API_URL}/api/v1/auth/me`, { headers: { cookie: req.headers.get('cookie') ?? '' } }).catch(() => null);
       if (me?.ok) {
         const body = (await me.json()) as { data: { redirectTo: string } };
+        // Administrators use the separate admin-web site; this app has no /admin pages, so show the form.
+        if (body.data.redirectTo.startsWith('/admin')) return NextResponse.next();
         return NextResponse.redirect(new URL(body.data.redirectTo, req.url));
       }
     }
@@ -66,7 +68,7 @@ export async function middleware(req: NextRequest) {
 
   if (!matches(pathname, PROTECTED)) return NextResponse.next();
 
-  const loginUrl = new URL('/login', req.url);
+  const loginUrl = new URL(matches(pathname, ['/employee']) ? '/login/employee' : '/login', req.url);
   loginUrl.searchParams.set('next', pathname + search);
 
   if (access) return NextResponse.next();

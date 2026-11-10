@@ -14,7 +14,12 @@ import { apiLimiter } from './middleware/rateLimit';
 import { adminRouter } from './modules/admin/admin.routes';
 import { adminAuthRouter } from './modules/admin/auth.routes';
 import { adminHrRouter } from './modules/admin/hr.routes';
-import { adminEmployeesRouter, adminRolesRouter } from './modules/admin/people.routes';
+import { adminEmployeesRouter, adminLeadsRouter, adminRolesRouter, adminWorkRouter } from './modules/admin/people.routes';
+import { adminDashboardRouter } from './modules/admin/dashboard.routes';
+import { adminCompaniesRouter, adminTransportersRouter } from './modules/admin/parties.routes';
+import { adminDriversRouter, adminTankersRouter } from './modules/admin/fleet.routes';
+import { adminBookingsRouter, adminOffersRouter, adminTrackingRouter, adminTripsRouter } from './modules/admin/ops.routes';
+import { adminCommissionsRouter, adminPaymentsRouter, adminServicesRouter, adminSubscriptionsRouter } from './modules/admin/finance.routes';
 import { employeeRouter } from './modules/employee/employee.routes';
 import { adminTransporterTicketsRouter } from './modules/admin/transporter-tickets.routes';
 import { agencyRouter } from './modules/agency/agency.routes';
@@ -84,11 +89,26 @@ export function createApp() {
   api.use('/users', usersRouter);
   api.use('/agency', agencyRouter);
   api.use('/admin/transporter-tickets', adminTransporterTicketsRouter);
-  // Only what Admin needs to control employees. The other admin routers remain unmounted.
+  // Admin Portal (served to admin-web). Mounted before the legacy SUPER_ADMIN-only '/admin' router below.
   api.use('/admin/auth', adminAuthRouter);
   api.use('/admin/roles', adminRolesRouter);
   api.use('/admin/employees', adminEmployeesRouter);
   api.use('/admin/hr', adminHrRouter);
+  api.use('/admin/dashboard', adminDashboardRouter);
+  api.use('/admin/companies', adminCompaniesRouter);
+  api.use('/admin/transporters', adminTransportersRouter);
+  api.use('/admin/drivers', adminDriversRouter);
+  api.use('/admin/tankers', adminTankersRouter);
+  api.use('/admin/bookings', adminBookingsRouter);
+  api.use('/admin/offers', adminOffersRouter);
+  api.use('/admin/trips', adminTripsRouter);
+  api.use('/admin/tracking', adminTrackingRouter);
+  api.use('/admin/payments', adminPaymentsRouter);
+  api.use('/admin/commissions', adminCommissionsRouter);
+  api.use('/admin/subscriptions', adminSubscriptionsRouter);
+  api.use('/admin/services', adminServicesRouter);
+  api.use('/admin/leads', adminLeadsRouter);
+  api.use('/admin/work', adminWorkRouter);
   api.use('/employee', employeeRouter);
   api.use('/admin', adminRouter);
   // Company Portal (Phase 1)

@@ -1,0 +1,2 @@
+/** A booking card in the transporter marketplace. */
+export type MarketCard = { id: string; bookingCode: string; pickupCity: string; deliveryCity: string; distanceKm: number; product: string; tankerCapacityKl: number; remainingTankers: number; numberOfTankers: number; loadingDate: string; loadingTime: string; customerOffer: number; offerExpiresAt: string; availableTankers: number; isDemo: boolean };

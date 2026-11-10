@@ -77,7 +77,7 @@ Routes on paths shared with the Company Portal (`/offers/:id`, `/trips/:id`, `/s
 
 ## Known limitations
 
-- The Admin Portal routers (`modules/admin/{auth,dashboard,people,parties,fleet,ops,finance}.routes.ts`) are not mounted in `app.ts`. Until they are, tankers cannot be verified through the API, and settlements cannot be marked paid.
+- The Admin Portal routers are mounted under `/api/v1/admin/*` and served to the admin console (`admin-web`), where tankers and drivers are verified and settlements are marked paid.
 - Paid subscriptions are recorded as `PENDING`, because `payments` rows require a booking. Activation needs an admin step.
 - `Processing`, `Partially Settled` and `Failed` settlement states display correctly, but nothing sets them yet.
 - Commission tax and adjustment lines show zero: the commission engine has no such fields.

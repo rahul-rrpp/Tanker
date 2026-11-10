@@ -2,7 +2,7 @@
 
 A B2B marketplace for booking oil tankers. Companies post a load and name their freight price. Verified transporters accept or counter, and the company confirms one. The trip is then tracked live from loading to delivery, through settlement and documents.
 
-One backend serves a web app (all portals) and a mobile app (customers, transporters, drivers).
+One backend serves three front ends: the customer web app (company, transporter, driver and employee portals), a separate admin console, and a mobile app (customers, transporters, drivers).
 
 | Portal | Who | Web | Mobile |
 | --- | --- | --- | --- |
@@ -10,14 +10,15 @@ One backend serves a web app (all portals) and a mobile app (customers, transpor
 | **Transporter** | Tanker fleet owners and their staff | `/transporter` | ✓ |
 | **Driver** | Drivers added by a transporter | `/driver` | ✓ (with background GPS) |
 | **Employee** | TankerLink sales, operations, verification, accounts and MIS staff | `/employee` | – |
-| **Admin** | Platform administrators | API only (see [Status](#status)) | – |
+| **Admin** | Platform administrators | Separate site: [admin-web](admin-web/README.md) on port 3100 | – |
 
 ## Repository
 
 ```
 tanker/
 ├── backend/   Express 5 + TypeScript + Prisma 6 (PostgreSQL), REST API at /api/v1, Socket.IO realtime at /realtime
-├── web/       Next.js 15 (App Router) + Tailwind 4, all web portals
+├── web/       Next.js 15 (App Router) + Tailwind 4, company / transporter / driver / employee portals
+├── admin-web/ Next.js 15 admin console for platform administrators (port 3100)
 ├── mobile/    Expo SDK 54 + expo-router, company / transporter / driver app
 ├── docs/      Detailed documentation per portal and topic
 └── scripts/   End-to-end and smoke scripts
@@ -55,7 +56,18 @@ cp .env.example .env.local  # NEXT_PUBLIC_API_URL=http://localhost:4000
 npm run dev
 ```
 
-**3. Mobile**
+**3. Admin console** (http://localhost:3100)
+
+```bash
+cd admin-web
+npm install
+cp .env.example .env.local  # NEXT_PUBLIC_API_URL=http://localhost:4000
+npm run dev
+```
+
+The backend must list `http://localhost:3100` in `CORS_ORIGINS` (the example file already does).
+
+**4. Mobile**
 
 ```bash
 cd mobile
@@ -136,12 +148,12 @@ The backend suite covers authentication, OTP, sessions, role checks, registratio
 
 ## Production
 
-Build with `npm run build` and run with `npm start` in `backend/` and `web/`. Run `npm run prisma:deploy` before starting a new backend version. Behind a reverse proxy, forward WebSocket upgrades on `/realtime` to the API. Use HTTPS everywhere and a real OTP provider. The full checklist is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Build with `npm run build` and run with `npm start` in `backend/`, `web/` and `admin-web/`. Run `npm run prisma:deploy` before starting a new backend version. Behind a reverse proxy, forward WebSocket upgrades on `/realtime` to the API. Use HTTPS everywhere and a real OTP provider. The full checklist is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Status
 
-- **Done:** company, transporter, driver and employee portals on the web; the company, transporter and driver mobile app; employee and role management; HR settings in the admin API.
-- **Not yet enabled:** the remaining admin API sections (parties, fleet, finance, operations, dashboard) exist in `backend/src/modules/admin/` but are not mounted. Until they are, tankers cannot be verified through the API and transporter settlements cannot be marked paid. The web admin area is a placeholder.
+- **Done:** company, transporter, driver and employee portals on the web; the company, transporter and driver mobile app; the admin console (`admin-web`) with every admin API section switched on: dashboard, companies, transporters, drivers, tankers, bookings, offers, trips, tracking, payments, commissions and settlements, subscriptions, services, leads, tasks, employees, roles, HR settings and the activity log.
+- `web/` has no admin screens. All administration happens in `admin-web`.
 - Service-provider login is out of scope.
 
 ## Documentation
@@ -151,6 +163,7 @@ Build with `npm run build` and run with `npm start` in `backend/` and `web/`. Ru
 | [docs/COMPANY_PORTAL.md](docs/COMPANY_PORTAL.md) | Company portal: booking, offers, tracking, payments |
 | [docs/TRANSPORTER_PORTAL.md](docs/TRANSPORTER_PORTAL.md) | Transporter portal and driver sub-login |
 | [docs/EMPLOYEE_PORTAL.md](docs/EMPLOYEE_PORTAL.md) | Employee portal, roles and permissions |
+| [admin-web/README.md](admin-web/README.md) | Admin console: setup, sign-in, sections |
 | [docs/MOBILE_APP.md](docs/MOBILE_APP.md) | Mobile app for company, transporter and driver |
 | [docs/API.md](docs/API.md) | API conventions, response format, error codes |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Data model, sessions, security |

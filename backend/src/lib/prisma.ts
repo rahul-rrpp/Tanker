@@ -16,6 +16,10 @@ export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
+    // Prisma's defaults (2s to acquire a connection, 5s per interactive transaction) are too tight for a
+    // remote database: at ~350ms per round trip (e.g. India → Neon us-east-2) company registration's
+    // ~15-20 statements exceed 5s and the whole transaction rolls back with a 500.
+    transactionOptions: { maxWait: 10_000, timeout: 30_000 },
   });
 
 if (!env.isProduction) globalForPrisma.prisma = prisma;

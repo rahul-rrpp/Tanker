@@ -11,7 +11,9 @@ const NOTICES: Record<string, string> = {
   logout: 'You have been signed out.',
 };
 
-const transporterOpen = (process.env.NEXT_PUBLIC_ENABLED_PORTALS ?? '').split(',').map((s) => s.trim()).includes('transporter');
+const released = (process.env.NEXT_PUBLIC_ENABLED_PORTALS ?? '').split(',').map((s) => s.trim());
+const transporterOpen = released.includes('transporter');
+const employeeOpen = released.includes('employee') || released.includes('all');
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; reason?: string }> }) {
   const { next, reason } = await searchParams;
@@ -33,6 +35,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </>
         )}
       </p>
+      {employeeOpen && (
+        <p className="mt-3 text-center text-xs text-muted">
+          TankerLink staff:{' '}
+          <Link href="/login/employee" className="font-semibold text-brand-600 hover:text-brand-700">employee sign in</Link>
+        </p>
+      )}
     </AuthShell>
   );
 }

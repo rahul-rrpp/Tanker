@@ -38,3 +38,7 @@ Trip screens show the tanker's last position and open Google Maps / Apple Maps f
 npx tsc --noEmit
 npx expo export --platform android   # bundles the whole app
 ```
+
+## Code structure
+
+Screens live in `src/features/<feature>/screens/`; `app/` only holds Expo Router route files that re-export them. API paths are in `src/services/api/endpoints.ts`, route paths in `src/navigation/routes.ts`, colours and styles in `src/theme/`. See [mobile/REFACTORING_REPORT.md](../mobile/REFACTORING_REPORT.md).

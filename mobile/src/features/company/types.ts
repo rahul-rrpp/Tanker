@@ -1,0 +1,2 @@
+/** A trip as listed for the company. */
+export type CompanyTrip = { id: string; tripCode: string; status: string; etaAt: string | null; trackingSource: string; booking: { bookingCode: string }; pickup: { city: string | null } | null; delivery: { city: string | null } | null; tanker: { registrationNumber: string } | null; driver: { user: { fullName: string } } | null; transporter: { companyName: string } };

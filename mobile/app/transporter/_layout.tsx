@@ -1,3 +1,1 @@
-import { RoleStack } from '@/components/nav';
-
-export default RoleStack;
+export { RoleStack as default } from '@/navigation/RoleNavigators';

@@ -85,7 +85,7 @@ const paymentColumns: Column[] = [
 ];
 
 adminPaymentsRouter.get('/', can('payments', 'view'), async (req: Request, res: Response) => {
-  const q = parseList(req, { status: z.string().optional(), provider: z.string().optional(), companyId: z.string().uuid().optional(), method: z.string().optional() });
+  const q = parseList(req, { status: z.enum(['CREATED', 'PAID', 'FAILED', 'REFUND_PENDING', 'REFUNDED']).optional(), provider: z.string().optional(), companyId: z.string().uuid().optional(), method: z.string().optional() });
   const where: Prisma.PaymentWhereInput = {
     ...(q.status ? { status: q.status as never } : {}),
     ...(q.provider ? { provider: q.provider as never } : {}),

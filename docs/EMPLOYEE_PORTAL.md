@@ -71,4 +71,4 @@ Admin: `/admin/auth`, `/admin/roles`, `/admin/employees`, and `/admin/hr/{kpi-ta
 - SMS, email and push remain unconnected adapters. New employees get no automatic message.
 - Attendance rules and leave entitlements are defaults. Replace them with your approved policy and confirm they meet applicable labour law.
 - Call duration is entered by hand. There is no telephony integration.
-- The other admin routers (`parties`, `fleet`, `finance`, `ops`, `dashboard`) remain unmounted, so transporter settlements cannot yet be marked paid.
+- All admin routers are mounted under `/api/v1/admin/*` and used by the admin console (`admin-web`). Employees with admin permissions can sign in there too and see only what their role allows.

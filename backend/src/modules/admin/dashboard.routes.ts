@@ -128,11 +128,13 @@ adminDashboardRouter.get('/', async (req: Request, res: Response) => {
     prisma.booking.count({ where: { ...funnelBase, status: { in: ['DELIVERED', 'COMPLETED'] } } }),
   ]);
 
-  const routes = await prisma.$queryRaw<{ route: string; c: bigint }[]>`
-    SELECT p.city || ' → ' || d.city route, COUNT(*) c FROM bookings b
+  // The arrow is added in JS: databases created with a non-UTF8 encoding (e.g. WIN1252) cannot hold it.
+  const routeRows = await prisma.$queryRaw<{ pickup: string | null; delivery: string | null; c: bigint }[]>`
+    SELECT p.city pickup, d.city delivery, COUNT(*) c FROM bookings b
       JOIN booking_locations p ON p."bookingId" = b.id AND p.type = 'PICKUP'
       JOIN booking_locations d ON d."bookingId" = b.id AND d.type = 'DELIVERY'
-     WHERE b."createdAt" BETWEEN ${r.gte} AND ${r.lte} GROUP BY 1 ORDER BY 2 DESC LIMIT 8`;
+     WHERE b."createdAt" BETWEEN ${r.gte} AND ${r.lte} GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 8`;
+  const routes = routeRows.map((x) => ({ route: x.pickup && x.delivery ? `${x.pickup} → ${x.delivery}` : null, c: x.c }));
   const capacity = await prisma.$queryRaw<{ cap: Prisma.Decimal; c: bigint }[]>`
     SELECT r."tankerCapacityKl" cap, SUM(r."numberOfTankers") c FROM booking_requirements r JOIN bookings b ON b.id = r."bookingId"
      WHERE b."createdAt" BETWEEN ${r.gte} AND ${r.lte} GROUP BY 1 ORDER BY 1`;
