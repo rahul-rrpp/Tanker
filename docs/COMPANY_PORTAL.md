@@ -1,4 +1,4 @@
-# TankerLink — Company Portal (Phase 1)
+# OnlyTanker — Company Portal (Phase 1)
 
 The Company Portal lets a company register, book oil tankers on a map, compare and negotiate transporter
 offers, confirm one transporter, track the trip, pay and download documents. Admin, employee, transporter

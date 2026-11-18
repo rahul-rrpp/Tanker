@@ -1,9 +1,9 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { ENDPOINTS } from '@/services/api';
 import { ActionButton, PromptModal, QueryState } from '@/components/common';
-import { Card, Pill, Row, SectionTitle, Banner, Button } from '@/components/ui';
+import { Banner, Button, Card, IconBadge, InfoCard, Pill, SectionTitle, SummaryCard, Timeline } from '@/components/ui';
 import { callPhone, openMaps } from '@/utils/linking';
 import { Page } from '@/components/layout';
 import { toneFor } from '@/utils/status';
@@ -27,40 +27,68 @@ export default function TransporterTripDetailScreen() {
   const g = t.data?.tracking;
   const open = q.data?.alerts.filter((a) => !a.resolvedAt) ?? [];
   return (
-    <Page title={x ? `${x.pickup} → ${x.delivery}` : 'Trip'} subtitle={x ? `${x.tripCode} · ${x.company}` : undefined} refreshing={q.refreshing} onRefresh={reload}>
+    <Page title="Trip" subtitle={x ? `${x.company} · ${x.bookingCode}` : undefined} refreshing={q.refreshing} onRefresh={reload}>
       <Stack.Screen options={{ title: x?.tripCode ?? 'Trip' }} />
-      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} />
+      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} skeleton="detail" />
       {x ? (
         <>
-          <Pill label={humanize(x.status)} tone={toneFor(x.status)} />
+          <SummaryCard code={x.tripCode} status={<Pill label={humanize(x.status)} tone={toneFor(x.status)} />} from={x.pickup} to={x.delivery} />
           {open.map((a) => <Banner key={a.id}>{`${humanize(a.type)}: ${a.message} (${timeAgo(a.detectedAt)})`}</Banner>)}
           {g ? (
-            <Card>
-              {g.dataSource === 'SIMULATED' ? <Banner tone="warning">{g.dataSourceLabel}</Banner> : <Text style={{ fontWeight: '600' }}>{g.dataSourceLabel}</Text>}
-              <Row label="Remaining" value={km(g.remainingDistanceKm)} />
-              <Row label="Last update" value={timeAgo(g.lastGpsAt)} />
-              {g.currentPosition ? <Button title="Show tanker on map" onPress={() => openMaps(g.currentPosition!.lat, g.currentPosition!.lng)} /> : null}
+            <Card style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <IconBadge icon="locate-outline" tone="brand" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>{km(g.remainingDistanceKm)} to go</Text>
+                  <Text style={{ color: colors.muted, fontSize: 12 }}>Last update {timeAgo(g.lastGpsAt)}</Text>
+                </View>
+              </View>
+              {g.dataSource === 'SIMULATED' ? <Banner tone="warning">{g.dataSourceLabel}</Banner> : <Text style={{ color: colors.muted, fontSize: 12 }}>{g.dataSourceLabel}</Text>}
+              {g.currentPosition ? <Button title="Show tanker on map" icon="map-outline" onPress={() => openMaps(g.currentPosition!.lat, g.currentPosition!.lng)} /> : null}
             </Card>
           ) : null}
-          <Card>
-            <Row label="Product" value={x.product} />
-            <Row label="Loading" value={`${day(x.loadingDate)}, ${x.loadingTime}`} />
-            <Row label="Delivery by" value={day(x.expectedDeliveryDate)} />
-            <Row label="Tanker" value={x.tanker?.registrationNumber} />
-            <Row label="Driver" value={x.driver?.name} />
-          </Card>
-          {x.driver ? <Button title="Call driver" variant="secondary" onPress={() => callPhone(x.driver!.phone)} /> : null}
-          {x.status === 'DELIVERED' ? <ActionButton title="Close trip and release tanker" action={() => tripsService.complete(id)} success="Trip completed. The tanker is available at the delivery point." onDone={reload} confirm="Close this trip? The tanker becomes available where it was delivered." /> : null}
+          <InfoCard
+            title="Load and crew"
+            items={[
+              { icon: 'flask-outline', label: 'Product', value: x.product },
+              { icon: 'calendar-outline', label: 'Loading', value: `${day(x.loadingDate)}, ${x.loadingTime}` },
+              { icon: 'flag-outline', label: 'Delivery by', value: day(x.expectedDeliveryDate) },
+              { icon: 'bus-outline', label: 'Tanker', value: x.tanker?.registrationNumber },
+              { icon: 'person-outline', label: 'Driver', value: x.driver?.name },
+            ]}
+            footer={x.driver ? <Button title="Call driver" icon="call-outline" variant="secondary" onPress={() => callPhone(x.driver!.phone)} /> : undefined}
+          />
+          {x.status === 'DELIVERED' ? <ActionButton title="Close trip and release tanker" icon="checkmark-done-outline" action={() => tripsService.complete(id)} success="Trip completed. The tanker is available at the delivery point." onDone={reload} confirm="Close this trip? The tanker becomes available where it was delivered." /> : null}
           {!['COMPLETED', 'CANCELLED'].includes(x.status) ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <View style={{ flex: 1 }}><Button title="Report delay" icon="time-outline" variant="secondary" onPress={() => setIssue('DELAYED')} /></View>
+              <View style={{ flex: 1 }}><Button title="Emergency" icon="warning-outline" variant="danger" onPress={() => setIssue('EMERGENCY')} /></View>
+            </View>
+          ) : null}
+          {q.data?.documents.length ? (
             <>
-              <Button title="Report delay" variant="secondary" onPress={() => setIssue('DELAYED')} />
-              <Button title="Report emergency" variant="danger" onPress={() => setIssue('EMERGENCY')} />
+              <SectionTitle>Documents</SectionTitle>
+              <Card style={{ gap: 10 }}>
+                {q.data.documents.map((d) => (
+                  <View key={d.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <IconBadge icon="document-attach-outline" tone="success" size={34} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontWeight: '700', color: colors.ink }}>{humanize(d.type)}</Text>
+                      <Text style={{ color: colors.muted, fontSize: 12 }}>{d.title} · {dateTime(d.createdAt)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
             </>
           ) : null}
-          {q.data?.documents.length ? <SectionTitle>Documents</SectionTitle> : null}
-          {q.data?.documents.map((d) => <Text key={d.id} style={{ color: colors.ink }}>{humanize(d.type)}: {d.title} · {dateTime(d.createdAt)}</Text>)}
-          <SectionTitle>Timeline</SectionTitle>
-          {h.data?.history.map((r) => <Text key={r.id} style={{ color: colors.ink }}>{humanize(r.newStatus)} <Text style={{ color: colors.muted }}>· {dateTime(r.at)} · {r.updatedBy}{r.remarks ? ` · ${r.remarks}` : ''}</Text></Text>)}
+          {h.data?.history.length ? (
+            <>
+              <SectionTitle>Timeline</SectionTitle>
+              <Card>
+                <Timeline items={h.data.history.map((r) => ({ key: r.id, title: humanize(r.newStatus), detail: `${dateTime(r.at)} · ${r.updatedBy}${r.remarks ? ` · ${r.remarks}` : ''}` }))} />
+              </Card>
+            </>
+          ) : null}
           <PromptModal visible={Boolean(issue)} title={issue === 'EMERGENCY' ? 'Report emergency' : 'Report delay'} label="Details" submit="Report" onClose={() => setIssue(null)} onSubmit={async (message) => { await tripsService.reportIssue(id, issue, message); reload(); }} />
         </>
       ) : null}

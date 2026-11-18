@@ -1,6 +1,6 @@
 # Mobile app refactoring report
 
-Date: 10 November 2026. Scope: `mobile/` (TankerLink app for companies, transporters and drivers).
+Date: 10 November 2026. Scope: `mobile/` (OnlyTanker app for companies, transporters and drivers).
 
 The goal was a feature-based structure without changing UI, business logic, API contracts, routes or libraries. Every screen still renders the same markup, sends the same requests and lives at the same route.
 

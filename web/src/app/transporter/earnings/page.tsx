@@ -22,7 +22,7 @@ export default function Page() {
   const rows = tab === 'pending' ? data.items.filter((r) => r.balance > 0) : data.items;
   return (
     <>
-      <PageHeader title="Earnings & payments" subtitle="From TankerLink’s settlement records. These figures are read-only." actions={<a href="/api/v1/transporters/me/statement.pdf" download><Button variant="secondary">Download statement</Button></a>} />
+      <PageHeader title="Earnings & payments" subtitle="From OnlyTanker’s settlement records. These figures are read-only." actions={<a href="/api/v1/transporters/me/statement.pdf" download><Button variant="secondary">Download statement</Button></a>} />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">{CARDS.map(([k, l]) => <StatCard key={k} label={l} value={inr(data.summary[k])} icon={<BadgeIndianRupee className="h-5 w-5" />} />)}</div>
       <div className="mt-6"><Tabs tabs={[{ value: 'all', label: 'All earnings' }, { value: 'pending', label: 'Pending payments' }]} value={tab} onChange={setTab} /></div>
       <div className="mt-4">

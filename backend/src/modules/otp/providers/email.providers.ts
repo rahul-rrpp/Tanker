@@ -22,7 +22,7 @@ export class SmtpEmailProvider implements EmailOtpProvider {
       await this.transport.sendMail({
         from: this.cfg.from,
         to: m.destination,
-        subject: `Your TankerLink verification code: ${m.code}`,
+        subject: `Your OnlyTanker verification code: ${m.code}`,
         text: `Use ${m.code} to ${PURPOSE_TEXT[m.purpose]}. The code expires in ${minutes} minutes.\n\nIf you did not request this, you can ignore this email.`,
       });
     } catch (e) {

@@ -11,8 +11,8 @@ import { humanize, toneFor, type Tone } from '@/lib/format';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-brand-300',
-  secondary: 'border border-line bg-white text-ink hover:bg-canvas disabled:text-muted',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-[var(--shadow-glow)] disabled:bg-brand-300 disabled:shadow-none',
+  secondary: 'border-[1.5px] border-line-soft bg-white text-ink hover:border-line hover:bg-canvas disabled:text-muted',
   ghost: 'text-brand-700 hover:bg-brand-50 disabled:text-muted',
   danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
 };
@@ -25,7 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
     <button
       ref={ref}
       disabled={disabled || loading}
-      className={clsx('inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed', size === 'sm' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm', VARIANTS[variant], className)}
+      className={clsx('inline-flex items-center justify-center gap-2 rounded-[var(--radius-field)] font-semibold transition-[background-color,border-color,transform] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100', size === 'sm' ? 'px-3 py-1.5 text-xs' : 'h-11 px-4 text-sm', VARIANTS[variant], className)}
       {...rest}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
@@ -36,7 +36,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBut
 
 // ---- Form fields -------------------------------------------------------------------------------
 
-const fieldClass = 'w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-canvas';
+const fieldClass = 'w-full rounded-[var(--radius-field)] border-[1.5px] border-line-soft bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-slate-400 hover:border-line focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:bg-canvas';
 
 export function FieldShell({ label, error, hint, required, children }: { label: string; error?: string; hint?: string; required?: boolean; children: ReactNode }) {
   return (
@@ -61,7 +61,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
 
 // ---- Surfaces ----------------------------------------------------------------------------------
 
-export const Card = ({ className, children }: { className?: string; children: ReactNode }) => <div className={clsx('rounded-2xl border border-line bg-white shadow-sm', className)}>{children}</div>;
+export const Card = ({ className, children }: { className?: string; children: ReactNode }) => <div className={clsx('rounded-2xl border border-line-soft bg-white shadow-[var(--shadow-card)]', className)}>{children}</div>;
 
 export function Section({ title, actions, children, className }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (

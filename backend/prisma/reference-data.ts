@@ -13,7 +13,7 @@ export const PRODUCTS = [
   { code: 'LUBRICATING_OIL', name: 'Lubricating Oil', category: 'LUBRICANT', description: 'Finished lubricants and engine oils.', sortOrder: 4 },
   { code: 'BASE_OIL', name: 'Base Oil', category: 'LUBRICANT', description: 'Group I/II/III base oils for blending.', sortOrder: 5 },
   { code: 'INDUSTRIAL_OIL', name: 'Industrial Oil', category: 'INDUSTRIAL', description: 'Hydraulic, transformer, quenching and process oils.', sortOrder: 6 },
-  { code: 'OTHER_APPROVED', name: 'Other Approved Product', category: 'OTHER', description: 'Other petroleum products approved by TankerLink operations.', requiresSpecialApproval: true, sortOrder: 99 },
+  { code: 'OTHER_APPROVED', name: 'Other Approved Product', category: 'OTHER', description: 'Other petroleum products approved by OnlyTanker operations.', requiresSpecialApproval: true, sortOrder: 99 },
 ];
 
 export const TANKER_TYPES = [

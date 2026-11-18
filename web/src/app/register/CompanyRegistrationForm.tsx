@@ -146,7 +146,7 @@ export function CompanyRegistrationForm() {
       <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-center">
         <CheckCircle2 className="mx-auto h-12 w-12 text-green-600" aria-hidden />
         <h2 className="mt-3 text-xl font-bold text-ink">Registration successful</h2>
-        <p className="mt-1 text-sm text-muted">{done.name} is registered on TankerLink.</p>
+        <p className="mt-1 text-sm text-muted">{done.name} is registered on OnlyTanker.</p>
         <div className="mx-auto mt-5 max-w-xs rounded-xl border border-green-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Your company ID</p>
           <p className="mt-1 font-mono text-2xl font-bold text-ink">{done.code}</p>

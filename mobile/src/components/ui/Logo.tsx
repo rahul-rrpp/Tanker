@@ -1,18 +1,28 @@
-import { Text, View } from 'react-native';
-import { colors } from '@/theme';
+import { Image, View } from 'react-native';
 
-/** Simple vector-free brand mark (tanker silhouette built from views). */
+/**
+ * OnlyTanker brand artwork (src/assets/images), generated from brand/onlytanker-logo.png by
+ * brand/build-brand-assets.py.
+ */
+/** The orange location pin with the tanker. The pin fills 96% of the image height and 77% of its width. */
+export const LOGO_MARK = require('@/assets/images/logo-mark.png') as number;
+/** "OnlyTanker" lettering: navy for light backgrounds, white for dark ones. */
+export const WORDMARK = require('@/assets/images/wordmark.png') as number;
+export const WORDMARK_LIGHT = require('@/assets/images/wordmark-light.png') as number;
+/** Width ÷ height of the wordmark images. */
+export const WORDMARK_RATIO = 1036 / 198;
+
+/** Pin above the "OnlyTanker" wordmark. `size` is the pin height in dp. */
 export function Logo({ inverted, size = 48 }: { inverted?: boolean; size?: number }) {
-  const s = size / 40;
+  const wordHeight = Math.max(28, size * 0.5);
   return (
-    <View style={{ alignItems: 'center' }} accessibilityRole="image" accessibilityLabel="TTMS logo">
-      <View style={{ width: 40 * s, height: 40 * s, borderRadius: 10 * s, backgroundColor: inverted ? colors.white : colors.brand600 }}>
-        <View style={{ position: 'absolute', left: 7 * s, top: 13 * s, width: 18 * s, height: 11 * s, borderRadius: 5.5 * s, backgroundColor: inverted ? colors.brand600 : colors.white }} />
-        <View style={{ position: 'absolute', left: 25 * s, top: 16 * s, width: 8 * s, height: 8 * s, borderTopRightRadius: 3 * s, backgroundColor: colors.accentLight }} />
-        <View style={{ position: 'absolute', left: 10 * s, top: 24 * s, width: 6 * s, height: 6 * s, borderRadius: 3 * s, backgroundColor: inverted ? colors.brand900 : colors.brand900 }} />
-        <View style={{ position: 'absolute', left: 25 * s, top: 24 * s, width: 6 * s, height: 6 * s, borderRadius: 3 * s, backgroundColor: colors.brand900 }} />
-      </View>
-      <Text style={{ marginTop: 10, fontSize: 22 * Math.max(1, s / 1.4), fontWeight: '800', letterSpacing: 1, color: inverted ? colors.white : colors.ink }}>TTMS</Text>
+    <View style={{ alignItems: 'center' }} accessibilityRole="image" accessibilityLabel="OnlyTanker logo">
+      <Image source={LOGO_MARK} style={{ width: size, height: size }} resizeMode="contain" />
+      <Image
+        source={inverted ? WORDMARK_LIGHT : WORDMARK}
+        style={{ marginTop: 14, height: wordHeight, width: wordHeight * WORDMARK_RATIO }}
+        resizeMode="contain"
+      />
     </View>
   );
 }

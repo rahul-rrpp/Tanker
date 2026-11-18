@@ -86,7 +86,7 @@ export default function Page() {
       </Modal>
       <Modal open={Boolean(bank)} onClose={() => setBank(null)} title="Change bank details" footer={<><Button variant="secondary" onClick={() => setBank(null)}>Cancel</Button>{codeSent ? <Button disabled={!bank?.code} onClick={() => void saveBank()}>Confirm change</Button> : <Button onClick={() => void sendCode()}>Send verification code</Button>}</>}>
         <div className="space-y-3">
-          <Alert tone="info">Payouts pause on the new account until TankerLink verifies it.</Alert>
+          <Alert tone="info">Payouts pause on the new account until OnlyTanker verifies it.</Alert>
           {fail && <Alert tone="error">{fail}</Alert>}
           {devCode && <Alert tone="info" title="Development OTP simulation">Code: {devCode}</Alert>}
           <TextField label="Account holder" {...bankBind('accountHolder')} /><TextField label="Bank name" {...bankBind('bankName')} /><TextField label="Account number" {...bankBind('accountNumber')} /><TextField label="IFSC" {...bankBind('ifsc')} />

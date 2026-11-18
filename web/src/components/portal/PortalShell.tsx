@@ -107,11 +107,11 @@ function NavList({ collapsed, unread, onNavigate }: { collapsed: boolean; unread
 
 function Brand({ collapsed }: { collapsed: boolean }) {
   return (
-    <Link href="/company/dashboard" className={clsx('flex items-center gap-2.5 px-5 py-5', collapsed && 'justify-center px-0')} aria-label="TankerLink dashboard">
+    <Link href="/company/dashboard" className={clsx('flex items-center gap-2.5 px-5 py-5', collapsed && 'justify-center px-0')} aria-label="OnlyTanker dashboard">
       <LogoMark className="h-9 w-9" />
       {!collapsed && (
         <span className="leading-tight">
-          <span className="block text-base font-bold tracking-tight text-white">TankerLink</span>
+          <span className="block text-base font-bold tracking-tight text-white">OnlyTanker</span>
           <span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">Company Portal</span>
         </span>
       )}

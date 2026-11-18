@@ -5,11 +5,11 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: { default: 'TankerLink — Oil Tanker Booking & Logistics', template: '%s · TankerLink' },
+  title: { default: 'OnlyTanker — Oil Tanker Booking & Logistics', template: '%s · OnlyTanker' },
   description: 'Book verified oil tankers, compare transporter offers and track your loads.',
 };
 
-export const viewport: Viewport = { themeColor: '#0b1b3f', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#0d2a4b', width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

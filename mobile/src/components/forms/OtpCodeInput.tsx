@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { colors, radius } from '@/theme';
+import { colors, radius, fonts } from '@/theme';
 
 /**
  * One hidden TextInput drives six visual boxes — supports SMS autofill
@@ -51,6 +51,6 @@ const styles = StyleSheet.create({
   },
   active: { borderColor: colors.brand500, borderWidth: 2 },
   error: { borderColor: colors.danger },
-  digit: { fontSize: 22, fontWeight: '700', color: colors.ink },
+  digit: { fontSize: 22, fontFamily: fonts.bold, color: colors.ink },
   hidden: { position: 'absolute', width: 1, height: 1, opacity: 0 },
 });

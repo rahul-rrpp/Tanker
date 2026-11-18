@@ -79,7 +79,7 @@ export function EmployeeShell({ name, children }: { name: string; children: Reac
       <button onClick={() => void logout()} className={clsx('mt-2 flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white', compact && 'justify-center px-0')}><LogOut className="h-[18px] w-[18px]" aria-hidden />{!compact && 'Logout'}</button>
     </nav>
   );
-  const brand = (compact: boolean) => <div className={clsx('flex items-center gap-2.5 px-5 py-4', compact && 'justify-center px-0')}><LogoMark className="h-9 w-9" />{!compact && <span className="leading-tight"><span className="block text-base font-bold text-white">TankerLink</span><span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">Employee Portal</span></span>}</div>;
+  const brand = (compact: boolean) => <div className={clsx('flex items-center gap-2.5 px-5 py-4', compact && 'justify-center px-0')}><LogoMark className="h-9 w-9" />{!compact && <span className="leading-tight"><span className="block text-base font-bold text-white">OnlyTanker</span><span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">Employee Portal</span></span>}</div>;
   return (
     <ToastProvider>
       <div className="min-h-dvh">

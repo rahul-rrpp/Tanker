@@ -102,7 +102,7 @@ const schema = z
     MAPS_FALLBACK_PROVIDER: z.enum(['osm', 'fixture', 'none']).default('osm'),
     OSRM_URL: z.string().url().default('https://router.project-osrm.org'),
     PHOTON_URL: z.string().url().default('https://photon.komoot.io'),
-    MAPS_USER_AGENT: z.string().default('TankerLink/1.0 (development)'),
+    MAPS_USER_AGENT: z.string().default('OnlyTanker/1.0 (development)'),
 
     // ---- Payments --------------------------------------------------------------------------
     /** razorpay (test or live keys) | mock (development gateway simulator; rejected in production). */

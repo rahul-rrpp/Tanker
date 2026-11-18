@@ -67,6 +67,8 @@ export const ENDPOINTS = {
     trips: (scope: string) => `/transporters/me/trips?scope=${scope}&pageSize=50`,
     tankers: '/tankers?pageSize=100',
     drivers: '/transporters/me/drivers?pageSize=100',
+    createDriver: '/transporters/me/drivers',
+    inviteDriver: (id: string) => `/transporters/me/drivers/${id}/invite`,
     assign: (bookingId: string, kind: string) => `/bookings/${bookingId}/assign-${kind}`,
   },
   driver: {

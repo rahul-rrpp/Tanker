@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TankerLink",
+    "name": "OnlyTanker",
     "slug": "ttms-mobile",
     "scheme": "ttms",
     "version": "1.0.0",
@@ -11,9 +11,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ttms.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "TankerLink uses your location to update trip progress for your transporter and customer.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "TankerLink keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
-        "NSCameraUsageDescription": "TankerLink uses the camera to photograph delivery proof and trip documents."
+        "NSLocationWhenInUseUsageDescription": "OnlyTanker uses your location to update trip progress for your transporter and customer.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "OnlyTanker keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
+        "NSCameraUsageDescription": "OnlyTanker uses the camera to photograph delivery proof and trip documents."
       }
     },
     "android": {
@@ -26,7 +26,11 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "CAMERA"
-      ]
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
     },
     "plugins": [
       "expo-router",
@@ -34,6 +38,8 @@
       [
         "expo-splash-screen",
         {
+          "image": "./src/assets/images/splash-icon.png",
+          "imageWidth": 288,
           "backgroundColor": "#0d2a4b",
           "resizeMode": "contain"
         }
@@ -41,7 +47,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "TankerLink keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
+          "locationAlwaysAndWhenInUsePermission": "OnlyTanker keeps sharing your trip location while the screen is locked, only during an active trip you started sharing.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true
@@ -50,9 +56,11 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "TankerLink uses the camera to photograph delivery proof and trip documents."
+          "cameraPermission": "OnlyTanker uses the camera to photograph delivery proof and trip documents."
         }
-      ]
-    ]
+      ],
+      "expo-font"
+    ],
+    "icon": "./src/assets/images/icon.png"
   }
 }

@@ -129,7 +129,7 @@ adminBookingsRouter.post('/', can('bookings', 'create'), async (req: Request, re
     companyId: company.id,
     type: 'BOOKING_CREATED',
     title: `Booking ${booking.bookingCode} created on your behalf`,
-    message: `${req.admin!.name} (TankerLink) created this booking as authorised by ${input.authorization.authorizedBy} via ${input.authorization.mode.replace('_', ' ').toLowerCase()}.`,
+    message: `${req.admin!.name} (OnlyTanker) created this booking as authorised by ${input.authorization.authorizedBy} via ${input.authorization.mode.replace('_', ' ').toLowerCase()}.`,
     bookingId: booking.id,
   });
   created(res, `Booking ${booking.bookingCode} created for ${company.name}`, { booking });
@@ -158,7 +158,7 @@ adminBookingsRouter.get('/:id/pdf', can('bookings', 'view'), async (req: Request
 adminBookingsRouter.post('/:id/cancel', can('bookings', 'edit'), async (req: Request, res: Response) => {
   const b = await bookingOr404(req);
   const { reason } = body(req, z.object({ reason: z.string().trim().min(5, 'Give a reason').max(450) }));
-  await cancelBooking(b.companyId, req.admin!.userId, b.id, `[TankerLink] ${reason}`, req);
+  await cancelBooking(b.companyId, req.admin!.userId, b.id, `[OnlyTanker] ${reason}`, req);
   await audit({ action: 'booking.cancelled_by_admin', entityType: 'booking', entityId: b.id, companyId: b.companyId, module: 'bookings', previousValue: { status: b.status }, newValue: { status: 'CANCELLED', reason }, req });
   ok(res, 'Booking cancelled; the company has been notified', null);
 });
@@ -180,14 +180,14 @@ adminBookingsRouter.post('/:id/resolve', can('bookings', 'edit'), async (req: Re
   ok(res, 'Resolution recorded', null);
 });
 
-/** Assist allocation: accept an offer for the company when it has authorised TankerLink to do so. */
+/** Assist allocation: accept an offer for the company when it has authorised OnlyTanker to do so. */
 adminBookingsRouter.post('/:id/assist-allocation', can('bookings', 'edit'), async (req: Request, res: Response) => {
   const b = await bookingOr404(req);
   const { offerId, authorization } = body(req, z.object({ offerId: z.string().uuid(), authorization: z.string().trim().min(5, 'Record how the company authorised this').max(300) }));
   const offer = await prisma.transporterOffer.findFirst({ where: { id: offerId, bookingId: b.id } });
   if (!offer) throw AppError.notFound('Offer not found on this booking');
   const outcome = await acceptOffer(b.companyId, req.admin!.userId, offerId, req);
-  await addNote(req, 'BOOKING', b.id, `Allocation accepted by TankerLink for the company. Authorisation: ${authorization}`);
+  await addNote(req, 'BOOKING', b.id, `Allocation accepted by OnlyTanker for the company. Authorisation: ${authorization}`);
   await audit({ action: 'booking.allocation_assisted', entityType: 'booking', entityId: b.id, companyId: b.companyId, module: 'bookings', newValue: { offerId, authorization, amount: outcome.amount.toNumber() }, req });
   ok(res, outcome.confirmed ? 'Booking confirmed' : `Allocated; ${outcome.tankersRemaining} tanker(s) remaining`, outcome);
 });

@@ -83,7 +83,7 @@ async function road(a: Place, b: Place) {
   const osrm = process.env.OSRM_URL ?? 'https://router.project-osrm.org';
   try {
     const res = await fetch(`${osrm}/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=simplified&geometries=polyline`, {
-      headers: { 'User-Agent': process.env.MAPS_USER_AGENT ?? 'TankerLink/1.0 (development)' },
+      headers: { 'User-Agent': process.env.MAPS_USER_AGENT ?? 'OnlyTanker/1.0 (development)' },
       signal: AbortSignal.timeout(12_000),
     });
     const data = (await res.json()) as { code: string; routes: { distance: number; duration: number; geometry: string }[] };
@@ -558,7 +558,7 @@ async function main() {
   }
 
   for (const c of companies) {
-    notifications.push({ userId: c.user.id, companyId: c.company.id, type: 'REGISTRATION_SUCCESSFUL', title: 'Welcome to TankerLink', message: `Your company ID is ${c.company.companyCode}.`, link: '/company/profile', createdAt: c.company.createdAt, readAt: c.company.createdAt });
+    notifications.push({ userId: c.user.id, companyId: c.company.id, type: 'REGISTRATION_SUCCESSFUL', title: 'Welcome to OnlyTanker', message: `Your company ID is ${c.company.companyCode}.`, link: '/company/profile', createdAt: c.company.createdAt, readAt: c.company.createdAt });
   }
   notifications.push({ userId: companies[0].user.id, companyId: c0.id, type: 'PAYMENT_PENDING', title: 'Balance payment due (demo)', message: 'A completed trip has an outstanding balance. Pay from the Payments page.', link: '/company/payments', createdAt: at(now - 2 * DAY) });
   await prisma.notification.createMany({ data: notifications });

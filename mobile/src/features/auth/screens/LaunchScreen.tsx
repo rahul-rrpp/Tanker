@@ -2,12 +2,14 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { Logo, Button } from '@/components/ui';
 import { colors } from '@/theme';
+import { useStatusBarStyle } from '@/hooks/useStatusBarStyle';
 
 /**
  * Splash / auth-loading screen. Shown while the stored session is restored; the root gate then
  * redirects. If the server is unreachable the session is kept and the user can retry.
  */
 export default function LaunchScreen() {
+  useStatusBarStyle('light');
   const { status, error, retry } = useAuth();
   return (
     <View style={styles.container}>

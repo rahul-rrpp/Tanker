@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { TransporterShell } from '@/components/transporter/Shell';
 import { requireUser } from '@/lib/server-auth';
 
-export const metadata: Metadata = { title: { default: 'Transporter Portal', template: '%s · TankerLink' } };
+export const metadata: Metadata = { title: { default: 'Transporter Portal', template: '%s · OnlyTanker' } };
 
 export default async function TransporterLayout({ children }: { children: React.ReactNode }) {
   // Authorisation comes from the backend's view of the user; every API call re-checks it.

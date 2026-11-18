@@ -14,7 +14,7 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(380px,_5fr)_7fr]">
       <aside className="relative hidden overflow-hidden bg-brand-950 p-10 text-white lg:flex lg:flex-col">
-        <Link href="/login" aria-label="TankerLink home">
+        <Link href="/login" aria-label="OnlyTanker home">
           <Logo inverted />
         </Link>
         <div className="relative z-10 mt-auto max-w-md">
@@ -28,7 +28,7 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
             ))}
           </ul>
         </div>
-        <p className="relative z-10 mt-12 text-xs text-brand-300">© {new Date().getFullYear()} TankerLink · Oil Tanker Booking & Logistics Marketplace</p>
+        <p className="relative z-10 mt-12 text-xs text-brand-300">© {new Date().getFullYear()} OnlyTanker · Oil Tanker Booking & Logistics Marketplace</p>
         {/* Road stripes */}
         <svg className="absolute -right-24 top-24 h-[520px] w-[520px] opacity-[0.08]" viewBox="0 0 200 200" aria-hidden>
           <circle cx="100" cy="100" r="98" fill="none" stroke="#fff" strokeWidth="2" />
@@ -39,7 +39,7 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
 
       <main className="flex flex-col">
         <header className="flex items-center justify-between border-b border-line bg-white px-5 py-4 lg:hidden">
-          <Link href="/login" aria-label="TankerLink home">
+          <Link href="/login" aria-label="OnlyTanker home">
             <Logo />
           </Link>
         </header>

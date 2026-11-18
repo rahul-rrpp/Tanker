@@ -27,7 +27,7 @@ function fmt(v: unknown, f: Format): string {
 /** Excel workbook: report header, summary block, and a typed data table (numbers stay numeric). */
 export async function reportToXlsx(r: ReportResult, companyName: string): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'TankerLink';
+  wb.creator = 'OnlyTanker';
   wb.created = new Date();
   const ws = wb.addWorksheet(r.title.slice(0, 31));
   ws.addRow([r.title]).font = { bold: true, size: 14 };
@@ -74,7 +74,7 @@ export async function reportToXlsx(r: ReportResult, companyName: string): Promis
 /** Landscape PDF with summary and a paginated table. */
 export function reportToPdf(r: ReportResult, companyName: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 36, info: { Title: r.title, Author: 'TankerLink' } });
+    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 36, info: { Title: r.title, Author: 'OnlyTanker' } });
     const chunks: Buffer[] = [];
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -82,7 +82,7 @@ export function reportToPdf(r: ReportResult, companyName: string): Promise<Buffe
     const W = doc.page.width - 72;
 
     doc.rect(0, 0, doc.page.width, 64).fill('#0b1b3f');
-    doc.fillColor('#fff').font('Helvetica-Bold').fontSize(16).text('TankerLink', 36, 18);
+    doc.fillColor('#fff').font('Helvetica-Bold').fontSize(16).text('OnlyTanker', 36, 18);
     doc.font('Helvetica-Bold').fontSize(13).text(r.title, 300, 18, { width: W - 264, align: 'right' });
     doc.font('Helvetica').fontSize(8.5).fillColor('#bfdbfe').text(`${companyName} · ${r.range.from} to ${r.range.to}`, 300, 38, { width: W - 264, align: 'right' });
     doc.y = 80;

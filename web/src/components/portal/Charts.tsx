@@ -7,7 +7,7 @@ import { compactInr, inr, monthLabel } from '@/lib/format';
  * Single-series charts (one brand hue, no legend needed — the card title names the series).
  * Spend and booking counts are separate charts: never a dual axis.
  */
-const BLUE = '#2563eb';
+const BLUE = '#17559a';
 const GRID = '#e2e7ef';
 const AXIS = { fontSize: 11, fill: '#5b6676' };
 
@@ -62,7 +62,7 @@ export function RouteSpendChart({ data }: { data: { route: string; spend: number
       <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }} barCategoryGap="30%">
         <CartesianGrid horizontal={false} stroke={GRID} />
         <XAxis type="number" tickFormatter={(v: number) => compactInr(v)} tick={AXIS} axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="route" tick={{ ...AXIS, fill: '#0b1b3f' }} axisLine={false} tickLine={false} width={150} />
+        <YAxis type="category" dataKey="route" tick={{ ...AXIS, fill: '#0d2a4b' }} axisLine={false} tickLine={false} width={150} />
         <Tooltip
           cursor={{ fill: 'rgba(37,99,235,0.06)' }}
           content={({ active, payload }) => (active && payload?.[0] ? <TooltipBox title={`${payload[0].payload.route} · ${payload[0].payload.trips} trip(s)`} value={inr(Number(payload[0].value))} /> : null)}
@@ -76,8 +76,8 @@ export function RouteSpendChart({ data }: { data: { route: string; spend: number
 const STATUS_COLOR: Record<string, string> = {
   searching: '#ea580c',
   negotiation: '#f59e0b',
-  confirmed: '#2563eb',
-  in_transit: '#1d4ed8',
+  confirmed: '#17559a',
+  in_transit: '#13457d',
   completed: '#16a34a',
   cancelled: '#dc2626',
 };

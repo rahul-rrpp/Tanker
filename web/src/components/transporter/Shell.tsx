@@ -100,11 +100,11 @@ function Sidebar({ collapsed, unread, onNavigate }: { collapsed: boolean; unread
 
 function Brand({ collapsed, subtitle, href }: { collapsed: boolean; subtitle: string; href: string }) {
   return (
-    <Link href={href} className={clsx('flex items-center gap-2.5 px-5 py-4', collapsed && 'justify-center px-0')} aria-label="TankerLink home">
+    <Link href={href} className={clsx('flex items-center gap-2.5 px-5 py-4', collapsed && 'justify-center px-0')} aria-label="OnlyTanker home">
       <LogoMark className="h-9 w-9" />
       {!collapsed && (
         <span className="leading-tight">
-          <span className="block text-base font-bold tracking-tight text-white">TankerLink</span>
+          <span className="block text-base font-bold tracking-tight text-white">OnlyTanker</span>
           <span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">{subtitle}</span>
         </span>
       )}

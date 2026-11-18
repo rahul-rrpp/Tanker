@@ -2,7 +2,7 @@
   "name": "@ttms/backend",
   "version": "1.0.0",
   "private": true,
-  "description": "TankerLink - oil tanker booking marketplace API (Company Portal, Phase 1)",
+  "description": "OnlyTanker - oil tanker booking marketplace API (Company Portal, Phase 1)",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

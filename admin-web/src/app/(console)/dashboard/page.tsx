@@ -18,7 +18,7 @@ type Dashboard = {
 };
 
 const RANGES = [['today', 'Today'], ['yesterday', 'Yesterday'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['month', 'This month'], ['lastmonth', 'Last month'], ['quarter', 'This quarter']] as const;
-const BLUE = '#2563eb';
+const BLUE = '#17559a';
 const axis = { fontSize: 11, fill: '#5b6676' };
 
 function Chart({ title, children, height = 240 }: { title: string; children: React.ReactElement; height?: number }) {
@@ -57,7 +57,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Chart title="Bookings per day">
-              <AreaChart data={c.dailyBookings}><CartesianGrid strokeDasharray="3 3" stroke="#e2e7ef" /><XAxis dataKey="day" tick={axis} tickFormatter={(d: string) => d.slice(5)} /><YAxis allowDecimals={false} tick={axis} width={32} /><Tooltip /><Area type="monotone" dataKey="bookings" stroke={BLUE} fill="#dbe8fe" name="Bookings" /></AreaChart>
+              <AreaChart data={c.dailyBookings}><CartesianGrid strokeDasharray="3 3" stroke="#e2e7ef" /><XAxis dataKey="day" tick={axis} tickFormatter={(d: string) => d.slice(5)} /><YAxis allowDecimals={false} tick={axis} width={32} /><Tooltip /><Area type="monotone" dataKey="bookings" stroke={BLUE} fill="#d6e6f7" name="Bookings" /></AreaChart>
             </Chart>
             <Chart title="Revenue by month (₹)">
               <BarChart data={c.revenue}><CartesianGrid strokeDasharray="3 3" stroke="#e2e7ef" /><XAxis dataKey="month" tick={axis} /><YAxis tick={axis} width={56} /><Tooltip formatter={(v: number) => inr(v)} /><Legend /><Bar dataKey="commission" stackId="r" fill={BLUE} name="Commission" /><Bar dataKey="subscriptions" stackId="r" fill="#60a5fa" name="Subscriptions" /><Bar dataKey="services" stackId="r" fill="#f59e0b" name="Services" /></BarChart>

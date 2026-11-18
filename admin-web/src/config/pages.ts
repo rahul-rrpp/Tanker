@@ -404,7 +404,7 @@ export const PAGES: Record<string, PageDef> = {
 
   employees: {
     title: 'Employees',
-    subtitle: 'TankerLink staff accounts. Employees cannot sign up themselves; their role decides what they can do.',
+    subtitle: 'OnlyTanker staff accounts. Employees cannot sign up themselves; their role decides what they can do.',
     sections: [
       {
         kind: 'table', path: '/admin/employees', rowHref: (r) => `/employees/${r.id}`,

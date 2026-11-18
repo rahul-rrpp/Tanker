@@ -44,7 +44,7 @@ export interface PdfSpec {
 
 function header(doc: Doc, spec: PdfSpec) {
   doc.rect(0, 0, doc.page.width, 92).fill(NAVY);
-  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(20).text('TankerLink', 50, 28);
+  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(20).text('OnlyTanker', 50, 28);
   doc.font('Helvetica').fontSize(9).fillColor('#bfdbfe').text('Oil Tanker Booking & Logistics Marketplace', 50, 54);
   doc.font('Helvetica-Bold').fontSize(13).fillColor('#ffffff').text(spec.title, 300, 28, { width: doc.page.width - 350, align: 'right' });
   doc.font('Helvetica').fontSize(9).fillColor('#bfdbfe').text(spec.reference, 300, 50, { width: doc.page.width - 350, align: 'right' });
@@ -111,7 +111,7 @@ function table(doc: Doc, t: NonNullable<PdfSpec['table']>) {
 
 export function renderPdf(spec: PdfSpec): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 50, info: { Title: `${spec.title} ${spec.reference}`, Author: 'TankerLink' } });
+    const doc = new PDFDocument({ size: 'A4', margin: 50, info: { Title: `${spec.title} ${spec.reference}`, Author: 'OnlyTanker' } });
     const chunks: Buffer[] = [];
     doc.on('data', (c: Buffer) => chunks.push(c));
     doc.on('end', () => resolve(Buffer.concat(chunks)));

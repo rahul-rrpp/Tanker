@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
+import { LOGO_MARK } from '@/components/ui/Logo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formStyles as styles } from '@/theme';
 
@@ -21,10 +22,11 @@ export function Screen({ children, footer, padded = true }: { children: ReactNod
   );
 }
 
-/** Large screen title with an optional subtitle. */
+/** Large screen title with an optional subtitle, under the OnlyTanker pin (auth and sign-up screens). */
 export function Heading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={{ marginBottom: 24 }}>
+      <Image source={LOGO_MARK} style={{ width: 52, height: 52, marginLeft: -6, marginBottom: 14 }} resizeMode="contain" accessibilityIgnoresInvertColors />
       <Text style={styles.title} accessibilityRole="header">
         {title}
       </Text>

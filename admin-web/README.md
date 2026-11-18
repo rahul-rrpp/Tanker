@@ -1,6 +1,6 @@
-# TankerLink Admin Console (`admin-web`)
+# OnlyTanker Admin Console (`admin-web`)
 
-A separate Next.js website for TankerLink platform administrators. It runs on its own port (3100) and talks to the same backend as the customer web app and the mobile app.
+A separate Next.js website for OnlyTanker platform administrators. It runs on its own port (3100) and talks to the same backend as the customer web app and the mobile app.
 
 ## Run it
 
@@ -18,7 +18,7 @@ ENABLED_PORTALS=company,admin,transporter,driver,employee
 CORS_ORIGINS=http://localhost:3000,http://localhost:3100
 ```
 
-Restart the backend after changing it. In production, add the admin site's real URL (for example `https://admin.tankerlink.in`) to `CORS_ORIGINS`.
+Restart the backend after changing it. In production, add the admin site's real URL (for example `https://admin.onlytanker.in`) to `CORS_ORIGINS`.
 
 ## Signing in
 

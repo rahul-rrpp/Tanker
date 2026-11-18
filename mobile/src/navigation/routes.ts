@@ -33,6 +33,7 @@ export const ROUTES = {
     offers: '/transporter/offers',
     trips: '/transporter/trips',
     account: '/transporter/account',
+    addDriver: '/transporter/add-driver',
     marketBooking: (id: string) => `/transporter/market/${id}` as const,
     offer: (id: string) => `/transporter/offer/${id}` as const,
     trip: (id: string) => `/transporter/trip/${id}` as const,

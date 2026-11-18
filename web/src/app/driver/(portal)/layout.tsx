@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { DriverShell } from '@/components/transporter/Shell';
 import { requireUser } from '@/lib/server-auth';
 
-export const metadata: Metadata = { title: { default: 'Driver', template: '%s · TankerLink' } };
+export const metadata: Metadata = { title: { default: 'Driver', template: '%s · OnlyTanker' } };
 
 export default async function DriverPortalLayout({ children }: { children: React.ReactNode }) {
   const { user } = await requireUser({ roles: ['DRIVER'], next: '/driver/dashboard' });

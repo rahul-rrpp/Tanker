@@ -79,7 +79,7 @@ export function createApp() {
     '/api/docs',
     helmet({ contentSecurityPolicy: false }),
     swaggerUi.serve,
-    swaggerUi.setup(openApiDocument, { customSiteTitle: 'TankerLink API' }),
+    swaggerUi.setup(openApiDocument, { customSiteTitle: 'OnlyTanker API' }),
   );
 
   const api = express.Router();

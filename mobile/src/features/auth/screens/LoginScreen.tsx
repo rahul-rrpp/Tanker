@@ -90,7 +90,7 @@ export default function LoginScreen() {
         </>
       )}
       <Text style={{ textAlign: 'center', marginTop: 24, color: colors.muted }}>
-        New to TankerLink? <LinkText onPress={() => router.push(ROUTES.signup)}>Create an account</LinkText>
+        New to OnlyTanker? <LinkText onPress={() => router.push(ROUTES.signup)}>Create an account</LinkText>
       </Text>
     </Screen>
   );

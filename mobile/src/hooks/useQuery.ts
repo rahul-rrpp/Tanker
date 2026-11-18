@@ -33,6 +33,9 @@ export function useQuery<T>(path: string | null, opts: { pollMs?: number } = {})
 
   useEffect(() => {
     alive.current = true;
+    // A new path (e.g. another tab) means the old data is for something else: show the skeleton, not stale rows.
+    setData(null);
+    setError(null);
     setLoading(Boolean(path));
     void load('initial');
     return () => {

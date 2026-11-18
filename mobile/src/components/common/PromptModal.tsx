@@ -26,6 +26,7 @@ export function PromptModal({ visible, title, label, keyboard = 'default', submi
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.sheetBackdrop}>
         <View style={s.sheet}>
+          <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>{title}</Text>
           {error ? <Banner>{error}</Banner> : null}
           <Text style={s.rowLabel}>{label}</Text>

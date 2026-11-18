@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: { default: 'TankerLink Admin', template: '%s · TankerLink Admin' },
-  description: 'TankerLink platform administration',
+  title: { default: 'OnlyTanker Admin', template: '%s · OnlyTanker Admin' },
+  description: 'OnlyTanker platform administration',
   robots: { index: false, follow: false },
 };
 

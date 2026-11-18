@@ -94,7 +94,7 @@ const statementSpec = (title: string, ref: string, who: { companyName: string; t
     widths: [90, 90, 85, 90, 85, 55],
     totals: [['Total net payable', money(sum(rows, (r) => r.netPayable))], ['Total paid', money(sum(rows, (r) => r.paidAmount))]] as [string, string][],
   },
-  footer: 'Generated from TankerLink settlement records. Times are India Standard Time.',
+  footer: 'Generated from OnlyTanker settlement records. Times are India Standard Time.',
 });
 
 const pdfResponse = (res: Response, name: string, buf: Buffer, inline: boolean) => {

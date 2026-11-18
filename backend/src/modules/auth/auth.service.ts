@@ -659,7 +659,7 @@ export async function registerCompany(
     companyId: created.company.id,
     userIds: [created.userId],
     type: 'REGISTRATION_SUCCESSFUL',
-    title: 'Welcome to TankerLink',
+    title: 'Welcome to OnlyTanker',
     message: `Your company ID is ${created.company.companyCode}. Upload your GST certificate and PAN card to complete verification.`,
     link: '/company/profile',
   });

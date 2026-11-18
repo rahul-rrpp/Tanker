@@ -18,8 +18,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-sm',
-  secondary: 'bg-white text-ink border border-line hover:bg-canvas',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 shadow-[var(--shadow-glow)]',
+  secondary: 'bg-white text-ink border-[1.5px] border-line-soft hover:border-line hover:bg-canvas',
   ghost: 'text-brand-600 hover:bg-brand-50',
   danger: 'bg-danger text-white hover:opacity-90',
 };
@@ -35,8 +35,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-[var(--radius-field)] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60',
-        size === 'md' ? 'h-11 px-5 text-sm' : 'h-9 px-3 text-sm',
+        'inline-flex items-center justify-center gap-2 rounded-[var(--radius-field)] font-bold tracking-[0.01em] transition-[background-color,border-color,transform,box-shadow] duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100',
+        size === 'md' ? 'h-12 px-5 text-sm' : 'h-9 px-3.5 text-sm',
         variants[variant],
         fullWidth && 'w-full',
         className,
@@ -84,9 +84,9 @@ export function Field({ label, error, hint, required, id, children }: FieldProps
 
 const inputClass = (error?: string, extra?: string) =>
   clsx(
-    'block h-11 w-full rounded-[var(--radius-field)] border bg-white px-3.5 text-sm text-ink placeholder:text-slate-400 transition-colors',
+    'block h-12 w-full rounded-[var(--radius-field)] border-[1.5px] bg-white px-4 text-sm text-ink placeholder:text-slate-400 transition-colors',
     'focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-100 disabled:bg-canvas',
-    error ? 'border-danger focus:border-danger focus:ring-red-100' : 'border-line',
+    error ? 'border-danger focus:border-danger focus:ring-red-100' : 'border-line-soft hover:border-line',
     extra,
   );
 
@@ -229,5 +229,5 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: 'neutr
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={clsx('rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6', className)}>{children}</div>;
+  return <div className={clsx('rounded-2xl border border-line-soft bg-surface p-5 shadow-[var(--shadow-card)] sm:p-6', className)}>{children}</div>;
 }

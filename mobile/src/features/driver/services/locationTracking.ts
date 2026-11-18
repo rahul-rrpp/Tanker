@@ -91,7 +91,7 @@ export async function startTripTracking(tripId: string): Promise<Permission> {
     pausesUpdatesAutomatically: false,
     activityType: Location.ActivityType.AutomotiveNavigation,
     showsBackgroundLocationIndicator: true,
-    foregroundService: { notificationTitle: 'TankerLink trip tracking', notificationBody: 'Sharing your location with your transporter for this trip.', notificationColor: colors.brand600 },
+    foregroundService: { notificationTitle: 'OnlyTanker trip tracking', notificationBody: 'Sharing your location with your transporter for this trip.', notificationColor: colors.brand600 },
   });
   return bg.status === 'granted' ? 'granted' : 'foreground-only';
 }

@@ -11,7 +11,7 @@ import { sweepExpiringDocuments } from './modules/transporter/alerts.service';
 async function main() {
   await prisma.$connect();
   const server = createApp().listen(env.PORT, () => {
-    logger.info(`TankerLink API listening on http://localhost:${env.PORT} (docs: /api/docs)`);
+    logger.info(`OnlyTanker API listening on http://localhost:${env.PORT} (docs: /api/docs)`);
     if (env.OTP_PROVIDER === 'mock') logger.warn('OTP_PROVIDER=mock — codes are printed to this console, not sent. Development only.');
     if (env.DEMO_MODE) logger.warn('DEMO_MODE=true — demo simulator endpoints are enabled. Never enable for real customers.');
     if (env.PAYMENT_PROVIDER === 'mock') logger.warn('PAYMENT_PROVIDER=mock — payments use the development gateway simulator.');

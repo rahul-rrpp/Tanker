@@ -194,7 +194,7 @@ tankersRouter.put('/:id/availability', manage, idParam, validateRequest({ body: 
   const id = String(req.params.id);
   const t = await ownedTanker(tid(req), id);
   const { status, block, cancelBlockId, ...location } = req.body as z.infer<typeof availabilitySchema>;
-  if (t.status === 'SUSPENDED') throw AppError.conflict('This tanker is suspended by TankerLink', ErrorCode.NOT_COMPLIANT);
+  if (t.status === 'SUSPENDED') throw AppError.conflict('This tanker is suspended by OnlyTanker', ErrorCode.NOT_COMPLIANT);
   const active = await prisma.trip.findMany({ where: { tankerId: id, status: { in: BUSY_TRIP } }, select: { tripCode: true, plannedStartAt: true, plannedEndAt: true } });
   if (status && status !== 'AVAILABLE' && active.length) throw AppError.conflict(`Tanker is assigned to ${active[0].tripCode}. Reassign that trip first.`, ErrorCode.RESOURCE_CONFLICT);
   if (status === 'AVAILABLE' && active.length) throw AppError.conflict('Tanker status follows its current trip', ErrorCode.RESOURCE_CONFLICT);

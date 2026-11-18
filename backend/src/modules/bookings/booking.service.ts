@@ -165,7 +165,7 @@ export async function createBooking(
             specialRequirements: input.specialRequirements,
           },
         },
-        statusHistory: { create: { toStatus: 'SEARCHING', actorType: opts.source === 'ADMIN_ASSISTED' ? 'EMPLOYEE' : 'COMPANY', actorUserId: userId, note: opts.source === 'ADMIN_ASSISTED' ? 'Booking created by TankerLink on the company’s behalf' : 'Booking created' } },
+        statusHistory: { create: { toStatus: 'SEARCHING', actorType: opts.source === 'ADMIN_ASSISTED' ? 'EMPLOYEE' : 'COMPANY', actorUserId: userId, note: opts.source === 'ADMIN_ASSISTED' ? 'Booking created by OnlyTanker on the company’s behalf' : 'Booking created' } },
       },
     });
     await audit(

@@ -1,4 +1,4 @@
-# TankerLink
+# OnlyTanker
 
 A B2B marketplace for booking oil tankers. Companies post a load and name their freight price. Verified transporters accept or counter, and the company confirms one. The trip is then tracked live from loading to delivery, through settlement and documents.
 
@@ -9,7 +9,7 @@ One backend serves three front ends: the customer web app (company, transporter,
 | **Company** (customer) | Companies that need oil moved | `/company` | ✓ |
 | **Transporter** | Tanker fleet owners and their staff | `/transporter` | ✓ |
 | **Driver** | Drivers added by a transporter | `/driver` | ✓ (with background GPS) |
-| **Employee** | TankerLink sales, operations, verification, accounts and MIS staff | `/employee` | – |
+| **Employee** | OnlyTanker sales, operations, verification, accounts and MIS staff | `/employee` | – |
 | **Admin** | Platform administrators | Separate site: [admin-web](admin-web/README.md) on port 3100 | – |
 
 ## Repository

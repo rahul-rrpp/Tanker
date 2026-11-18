@@ -1,11 +1,13 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { homeRouteFor, useAuth } from '@/features/auth/context/AuthContext';
 import { experienceOf } from '@/features/auth/utils/experience';
+import { AnimatedSplash } from '@/features/splash/components/AnimatedSplash';
 import { AppProviders } from '@/providers/AppProviders';
-import { colors } from '@/theme';
+import { colors, FONT_ASSETS } from '@/theme';
 import { ROUTES } from './routes';
 // Registers the background location task before any screen mounts (required by expo-task-manager).
 import '@/features/driver/services/locationTracking';
@@ -18,12 +20,18 @@ void SplashScreen.preventAutoHideAsync();
  */
 function Gate() {
   const { status, user } = useAuth();
+  // Bundled fonts load in a few ms behind the splash; if one ever fails, the app still opens with the system font.
+  const [fontsLoaded, fontError] = useFonts(FONT_ASSETS);
+  const fontsReady = fontsLoaded || Boolean(fontError);
   const segments = useSegments();
   const router = useRouter();
 
+  // The animated splash hides the native one on its first frame; this is only a safety net so the app can never
+  // stay stuck behind the native splash.
   useEffect(() => {
-    if (status !== 'loading') void SplashScreen.hideAsync();
-  }, [status]);
+    const t = setTimeout(() => void SplashScreen.hideAsync().catch(() => undefined), 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (status === 'loading' || status === 'offline') return;
@@ -36,7 +44,8 @@ function Gate() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.canvas } }} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.paper } }} />
+      <AnimatedSplash ready={status !== 'loading' && fontsReady} />
     </>
   );
 }

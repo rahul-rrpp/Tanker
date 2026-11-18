@@ -39,7 +39,7 @@ export interface MapViewProps {
 
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
 const INDIA_CENTER: LL = { lat: 21.5, lng: 78.9 };
-const BLUE = '#2563eb';
+const BLUE = '#17559a';
 const ALT = '#94a3b8';
 
 export function MapView(props: MapViewProps) {
@@ -251,13 +251,13 @@ function GoogleEngine(p: MapViewProps) {
       ? new google.maps.Marker({
           position: p.vehicle,
           zIndex: 10,
-          icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation: p.vehicle.heading ?? 0, fillColor: '#0b1b3f', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
+          icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, rotation: p.vehicle.heading ?? 0, fillColor: '#0d2a4b', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 },
           map: map.current,
         })
       : null;
     fleet.current.forEach((x) => x.setMap(null));
     fleet.current = (p.markers ?? []).map((v) => {
-      const mk = new google.maps.Marker({ position: { lat: v.lat, lng: v.lng }, zIndex: 9, icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 5, fillColor: '#2563eb', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }, map: map.current });
+      const mk = new google.maps.Marker({ position: { lat: v.lat, lng: v.lng }, zIndex: 9, icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 5, fillColor: '#17559a', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }, map: map.current });
       mk.addListener('click', () => latest.current.onMarker?.(v.id));
       return mk;
     });

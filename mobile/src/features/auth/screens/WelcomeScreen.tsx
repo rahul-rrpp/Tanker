@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo, Button } from '@/components/ui';
 import { colors } from '@/theme';
 import { ROUTES } from '@/navigation/routes';
+import { useStatusBarStyle } from '@/hooks/useStatusBarStyle';
 
 const POINTS = ['Trips and deliveries in one place', 'Sign in with your mobile number', 'Verified agencies and drivers'];
 
 export default function WelcomeScreen() {
+  useStatusBarStyle('light');
   const router = useRouter();
   return (
     <SafeAreaView style={styles.safe}>

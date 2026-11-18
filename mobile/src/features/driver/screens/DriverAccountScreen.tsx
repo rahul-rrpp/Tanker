@@ -1,6 +1,6 @@
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { AccountScreen } from '@/features/account/components/AccountScreen';
-import { Card, Row, Button } from '@/components/ui';
+import { Button, InfoCard, InfoCardSkeleton } from '@/components/ui';
 import { callPhone } from '@/utils/linking';
 import { day, humanize } from '@/utils/format';
 import { useQuery } from '@/hooks';
@@ -16,16 +16,17 @@ export default function DriverAccountScreen() {
     <AccountScreen
       org={user?.agency?.companyName ?? d?.transporter}
       extra={d ? (
-        <>
-          <Card>
-            <Row label="Licence" value={`${d.licenceNumber} (${d.licenceType})`} />
-            <Row label="Licence expiry" value={day(d.licenceExpiry)} />
-            <Row label="Hazardous goods training" value={humanize(d.hazardousTraining)} />
-            <Row label="Verification" value={humanize(d.verificationStatus)} />
-          </Card>
-          <Button title="Call my transporter" variant="secondary" onPress={() => callPhone(d.transporterPhone)} />
-        </>
-      ) : null}
+        <InfoCard
+          title="Licence"
+          items={[
+            { icon: 'card-outline', label: 'Licence', value: `${d.licenceNumber} (${d.licenceType})` },
+            { icon: 'calendar-outline', label: 'Expiry', value: day(d.licenceExpiry) },
+            { icon: 'flame-outline', label: 'Hazardous goods', value: humanize(d.hazardousTraining) },
+            { icon: 'shield-checkmark-outline', label: 'Verification', value: humanize(d.verificationStatus) },
+          ]}
+          footer={<Button title="Call my transporter" icon="call-outline" variant="secondary" onPress={() => callPhone(d.transporterPhone)} />}
+        />
+      ) : q.loading ? <InfoCardSkeleton /> : null}
     />
   );
 }

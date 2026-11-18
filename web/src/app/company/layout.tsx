@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PortalShell } from '@/components/portal/PortalShell';
 import { requireUser } from '@/lib/server-auth';
 
-export const metadata: Metadata = { title: { default: 'Company Portal', template: '%s · TankerLink' } };
+export const metadata: Metadata = { title: { default: 'Company Portal', template: '%s · OnlyTanker' } };
 
 export default async function CompanyLayout({ children }: { children: React.ReactNode }) {
   // Authorisation is decided by the backend's view of the user (roles + company membership).

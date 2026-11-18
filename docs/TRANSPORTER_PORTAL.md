@@ -1,4 +1,4 @@
-# TankerLink: Transporter Portal and Driver Sub-login
+# OnlyTanker: Transporter Portal and Driver Sub-login
 
 Built into the existing application. `Agency` is the transporter. The booking, negotiation, commission, notification and auth code is reused, not duplicated.
 

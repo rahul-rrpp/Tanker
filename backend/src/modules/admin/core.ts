@@ -127,7 +127,7 @@ export async function respondList(
       columns: opts.columns,
       rows,
     };
-    const buffer = opts.q.format === 'pdf' ? await reportToPdf(report, 'TankerLink Admin') : await reportToXlsx(report, 'TankerLink Admin');
+    const buffer = opts.q.format === 'pdf' ? await reportToPdf(report, 'OnlyTanker Admin') : await reportToXlsx(report, 'OnlyTanker Admin');
     await audit({ action: 'admin.export', entityType: 'list', module: opts.module, metadata: { title: opts.title, rows: rows.length, format: opts.q.format }, req });
     res.setHeader('Content-Type', opts.q.format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${opts.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${opts.q.format}"`);

@@ -401,7 +401,7 @@ export function TransporterProfileModal({ open, onClose, transporterId }: { open
               {t.companyName} {t.isDemo && <DemoBadge />}
             </p>
             <p className="text-muted">
-              {t.city}, {t.state} · on TankerLink since {new Date(t.createdAt).getFullYear()}
+              {t.city}, {t.state} · on OnlyTanker since {new Date(t.createdAt).getFullYear()}
             </p>
             <div className="mt-2 flex items-center gap-4">
               <Rating value={t.rating} />

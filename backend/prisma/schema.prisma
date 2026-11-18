@@ -1,4 +1,4 @@
-// TankerLink - Oil Tanker Booking & Logistics Marketplace.
+// OnlyTanker - Oil Tanker Booking & Logistics Marketplace.
 //
 // Section 1 (identity, tenancy, sessions, audit) is the original authentication core and keeps its
 // original table names. Section 2 (company portal & marketplace) uses snake_case table names.

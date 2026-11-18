@@ -66,4 +66,4 @@ export async function ownedDriver(transporterId: string, id: string) {
   return d;
 }
 
-export const notVerified = (what: string) => AppError.conflict(`${what} must be verified by TankerLink first`, ErrorCode.NOT_COMPLIANT);
+export const notVerified = (what: string) => AppError.conflict(`${what} must be verified by OnlyTanker first`, ErrorCode.NOT_COMPLIANT);

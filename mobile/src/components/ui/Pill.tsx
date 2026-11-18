@@ -1,17 +1,25 @@
-import { Text } from 'react-native';
-import { colors, pageStyles as s } from '@/theme';
+import { Text, View } from 'react-native';
+import { colors, fonts } from '@/theme';
 import type { Tone } from '@/types';
 
-const TONES: Record<Tone, readonly [string, string]> = {
-  neutral: [colors.neutralBg, colors.muted],
-  info: [colors.brand50, colors.brand600],
-  success: [colors.successBg, colors.success],
-  warning: [colors.warningBg, colors.warning],
-  danger: [colors.dangerBg, colors.danger],
+export const TONE_COLOR: Record<Tone, string> = {
+  neutral: colors.faint,
+  info: colors.brand600,
+  success: colors.success,
+  warning: colors.warning,
+  danger: colors.danger,
 };
 
-/** Small rounded status label. */
-export function Pill({ label, tone = 'neutral' }: { label: string; tone?: Tone }) {
-  const [bg, fg] = TONES[tone];
-  return <Text style={[s.pill, { backgroundColor: bg, color: fg }]}>{label}</Text>;
+/**
+ * Status mark: a small coloured dot and the word, no filled pill. `live` turns the dot signal-orange for
+ * things that are moving right now.
+ */
+export function Pill({ label, tone = 'neutral', live }: { label: string; tone?: Tone; live?: boolean }) {
+  const c = live ? colors.accent : TONE_COLOR[tone];
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} accessibilityLabel={`Status: ${label}`}>
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: c }} />
+      <Text style={{ fontFamily: fonts.medium, fontSize: 12, color: live ? colors.accent : colors.ink }} numberOfLines={1}>{label}</Text>
+    </View>
+  );
 }

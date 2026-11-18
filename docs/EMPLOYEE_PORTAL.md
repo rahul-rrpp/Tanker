@@ -1,4 +1,4 @@
-# TankerLink: Employee Portal
+# OnlyTanker: Employee Portal
 
 The internal operations portal. It reuses the existing `User`, `Employee`, `EmployeeRole`, `Lead`, `FollowUp`, `EmployeeTask`, KPI, company, transporter, booking and payment tables, so no business record is duplicated.
 

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, parseApiError, useApi } from '@/lib/api';
+import { BrandMark } from './BrandMark';
 import { Loading, ToastProvider } from './ui';
 
 type Me = { user: { fullName: string; roles: string[]; email: string | null; phone: string }; isSuper: boolean; permissions: string[] };
@@ -114,8 +115,8 @@ export function Shell({ children }: { children: ReactNode }) {
   );
   const brand = (
     <div className="flex items-center gap-2.5 px-5 py-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white">TL</span>
-      <span className="leading-tight"><span className="block text-base font-bold text-white">TankerLink</span><span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">Admin Console</span></span>
+      <BrandMark />
+      <span className="leading-tight"><span className="block text-base font-bold text-white">OnlyTanker</span><span className="block text-[11px] font-medium uppercase tracking-wider text-brand-300">Admin Console</span></span>
     </div>
   );
   const footer = (
@@ -139,7 +140,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="lg:pl-64">
             <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur lg:hidden">
               <button onClick={() => setOpen(true)} className="rounded-lg p-2" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
-              <span className="font-semibold text-ink">TankerLink Admin</span>
+              <span className="font-semibold text-ink">OnlyTanker Admin</span>
               <Gauge className="ml-auto h-5 w-5 text-muted" aria-hidden />
             </header>
             <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">{children}</main>

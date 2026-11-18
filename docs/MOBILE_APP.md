@@ -1,4 +1,4 @@
-# TankerLink mobile app
+# OnlyTanker mobile app
 
 One Expo app (`mobile/`) for three kinds of user. After sign-in the app opens the right experience from the user's role; a user cannot open another role's screens.
 
@@ -42,3 +42,9 @@ npx expo export --platform android   # bundles the whole app
 ## Code structure
 
 Screens live in `src/features/<feature>/screens/`; `app/` only holds Expo Router route files that re-export them. API paths are in `src/services/api/endpoints.ts`, route paths in `src/navigation/routes.ts`, colours and styles in `src/theme/`. See [mobile/REFACTORING_REPORT.md](../mobile/REFACTORING_REPORT.md).
+
+## Branding, icon and launch screen
+
+The logo (orange pin), the "OnlyTanker" wordmark, the app icon, adaptive icon and native splash image are all cut from the master artwork `brand/onlytanker-logo.png` by `brand/build-brand-assets.py` (Python + Pillow), which also writes the web and admin-site logos and favicons. After replacing the artwork run `python brand/build-brand-assets.py` from the repository root, then `npx expo prebuild --platform android` and rebuild the app, because the icon, app name and native splash are compiled into it.
+
+On launch, `src/features/splash/components/AnimatedSplash.tsx` takes over from the native splash with an identical first frame, plays the logo animation (about 1.5 s), and fades out once sign-in restoration has finished, or after 6 seconds at most. It plays once per app start and honours the system "reduce motion" setting.

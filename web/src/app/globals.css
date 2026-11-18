@@ -1,37 +1,51 @@
 @import 'tailwindcss';
 
-/* TankerLink design tokens — electric blue on white/light grey, dark navy text */
+/* OnlyTanker design tokens — electric blue on white/light grey, dark navy text */
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-brand-50: #eff5ff;
-  --color-brand-100: #dbe8fe;
-  --color-brand-200: #bfd6fe;
-  --color-brand-300: #93bbfd;
-  --color-brand-400: #6098fa;
-  --color-brand-500: #3b76f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #172f6e;
-  --color-brand-950: #0b1b3f;
+  /* OnlyTanker brand, identical to the mobile app (mobile/src/theme/colors.ts). */
+  --color-brand-50: #eef5fc;
+  --color-brand-100: #d6e6f7;
+  --color-brand-200: #b3d0ef;
+  --color-brand-300: #82b1e2;
+  --color-brand-400: #4b8ccf;
+  --color-brand-500: #246bb8;
+  --color-brand-600: #17559a;
+  --color-brand-700: #13457d;
+  --color-brand-800: #103963;
+  --color-brand-900: #0d2a4b;
+  --color-brand-950: #081a30;
 
-  --color-accent-400: #fbbf24;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  --color-accent-400: #fd8b2c;
+  --color-accent-500: #fb6a0a; /* OnlyTanker orange (logo pin) */
+  --color-accent-600: #e0560a;
 
   --color-surface: #ffffff;
-  --color-canvas: #f4f6fa;
-  --color-ink: #0b1b3f;
+  --color-canvas: #f4f6f9;
+  --color-ink: #0f172a;
   --color-muted: #5b6676;
-  --color-line: #e2e7ef;
+  --color-line: #dfe4eb;
+  --color-line-soft: #e9eef5;
 
   --color-success: #15803d;
-  --color-warning: #ea580c;
-  --color-danger: #dc2626;
+  --color-warning: #b45309;
+  --color-danger: #c62828;
 
-  --radius-field: 0.625rem;
-  --shadow-card: 0 1px 2px rgb(11 27 63 / 0.04), 0 6px 20px rgb(11 27 63 / 0.05);
+  /* Rounder, softer shapes to match the app: fields 14px, cards 20px. Overrides Tailwind's scale so every
+     rounded-* class across the pages follows. */
+  --radius-field: 0.875rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
+
+  /* Soft, brand-tinted depth instead of grey shadows. */
+  --shadow-sm: 0 1px 2px rgb(13 42 75 / 0.05), 0 2px 8px rgb(13 42 75 / 0.04);
+  --shadow-md: 0 2px 4px rgb(13 42 75 / 0.05), 0 8px 20px rgb(13 42 75 / 0.07);
+  --shadow-lg: 0 4px 8px rgb(13 42 75 / 0.06), 0 16px 40px rgb(13 42 75 / 0.1);
+  --shadow-card: 0 1px 2px rgb(13 42 75 / 0.04), 0 8px 24px rgb(13 42 75 / 0.06);
+  --shadow-glow: 0 6px 16px rgb(23 85 154 / 0.28);
 }
 
 @layer base {

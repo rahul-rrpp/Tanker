@@ -12,7 +12,7 @@ export interface ReportChartSpec {
 }
 
 // Fixed categorical order (never cycled): agreed/primary first.
-const SERIES_COLORS = ['#2563eb', '#94a3b8', '#7c3aed'];
+const SERIES_COLORS = ['#17559a', '#94a3b8', '#7c3aed'];
 const GRID = '#e2e7ef';
 const AXIS = { fontSize: 11, fill: '#5b6676' };
 
@@ -68,7 +68,7 @@ export function ReportChart({ spec }: { spec: ReportChartSpec }) {
         <BarChart data={spec.data} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }} barCategoryGap="28%">
           <CartesianGrid horizontal={false} stroke={GRID} />
           <XAxis type="number" tickFormatter={(v: number) => fmtAxis(v, f)} tick={AXIS} axisLine={false} tickLine={false} />
-          <YAxis type="category" dataKey={spec.xKey} tickFormatter={xLabel} tick={{ ...AXIS, fill: '#0b1b3f' }} axisLine={false} tickLine={false} width={160} />
+          <YAxis type="category" dataKey={spec.xKey} tickFormatter={xLabel} tick={{ ...AXIS, fill: '#0d2a4b' }} axisLine={false} tickLine={false} width={160} />
           <Tooltip content={<Tip series={spec.series} />} cursor={{ fill: 'rgba(37,99,235,0.06)' }} />
           {spec.series.map((s, i) => (
             <Bar key={s.key} dataKey={s.key} name={s.label} fill={SERIES_COLORS[i]} radius={[0, 4, 4, 0]} maxBarSize={22} />

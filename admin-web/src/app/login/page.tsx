@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
+import { BrandMark } from '@/components/BrandMark';
 import { Alert, Button, Card, Input } from '@/components/ui';
 import { api, parseApiError } from '@/lib/api';
 
@@ -56,8 +57,8 @@ function LoginForm() {
   return (
     <Card className="w-full space-y-4 p-6">
       <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 font-bold text-white">TL</span>
-        <div><h1 className="text-xl font-bold text-ink">TankerLink Admin</h1><p className="text-sm text-muted">{challenge ? `Enter the code sent to ${challenge.destination}` : 'Sign in with your administrator account'}</p></div>
+        <BrandMark className="h-11 w-11" />
+        <div><h1 className="text-xl font-bold text-ink">OnlyTanker Admin</h1><p className="text-sm text-muted">{challenge ? `Enter the code sent to ${challenge.destination}` : 'Sign in with your administrator account'}</p></div>
       </div>
       {notice && !fail && <Alert tone="info">{notice}</Alert>}
       {fail && <Alert tone="error">{fail}</Alert>}
@@ -79,7 +80,7 @@ function LoginForm() {
           </div>
         </form>
       )}
-      <p className="text-center text-xs text-muted">Forgot your password? Reset it from the main TankerLink site, or ask another administrator.</p>
+      <p className="text-center text-xs text-muted">Forgot your password? Reset it from the main OnlyTanker site, or ask another administrator.</p>
     </Card>
   );
 }

@@ -67,10 +67,10 @@ export function PayButton({ bookingId, purpose, amount, label, onDone, variant =
         order_id: order.orderId,
         amount: order.amountPaise,
         currency: 'INR',
-        name: 'TankerLink',
+        name: 'OnlyTanker',
         description: order.description,
         prefill: order.prefill,
-        theme: { color: '#2563eb' },
+        theme: { color: '#17559a' },
         handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           try {
             await verify(resp.razorpay_order_id, resp.razorpay_payment_id, resp.razorpay_signature);

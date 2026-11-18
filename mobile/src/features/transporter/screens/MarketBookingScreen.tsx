@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Text } from 'react-native';
 import { ENDPOINTS } from '@/services/api';
 import { ActionButton, PromptModal, QueryState } from '@/components/common';
-import { Card, Row, Button, Field } from '@/components/ui';
+import { Button, Card, Field, InfoCard, SummaryCard } from '@/components/ui';
 import { Page } from '@/components/layout';
 import { dateTime, day, duration, inr, km } from '@/utils/format';
 import { colors } from '@/theme';
@@ -29,37 +29,44 @@ export default function MarketBookingScreen() {
     router.replace(ROUTES.transporter.offer(r.data.data.offerId));
   };
   return (
-    <Page title={b ? `${b.pickupCity} → ${b.deliveryCity}` : 'Booking'} subtitle={b ? `${b.bookingCode} · ${b.company}` : undefined}>
+    <Page title="Booking request" subtitle={b ? b.company : undefined}>
       <Stack.Screen options={{ title: b?.bookingCode ?? 'Booking' }} />
-      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} />
+      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} skeleton="detail" />
       {b ? (
         <>
-          <Card>
-            <Text style={{ color: colors.muted }}>Customer offered freight</Text>
-            <Text style={{ fontSize: 26, fontWeight: '800', color: colors.brand700 }}>{inr(b.customerOffer)}</Text>
-            <Text style={{ color: colors.muted, fontSize: 12 }}>Indicative platform freight {inr(b.suggestedFreight)}</Text>
-          </Card>
-          <Card>
-            <Row label="Pickup" value={b.pickupAddress} />
-            <Row label="Delivery" value={b.deliveryAddress} />
-            <Row label="Road distance" value={`${km(b.distanceKm)} · ${duration(b.durationMinutes)}`} />
-            <Row label="Product" value={b.product} />
-            <Row label="Quantity" value={`${b.quantityKl} KL in ${b.tankerCapacityKl} KL tankers`} />
-            <Row label="Tankers needed" value={`${b.remainingTankers} of ${b.numberOfTankers}`} />
-            <Row label="Loading" value={`${day(b.loadingDate)}, ${b.loadingTime}`} />
-            <Row label="Delivery by" value={day(b.expectedDeliveryDate)} />
-            <Row label="Offers close" value={dateTime(b.offerExpiresAt)} />
-            {b.specialRequirements ? <Row label="Requirements" value={b.specialRequirements} /> : null}
-          </Card>
+          <SummaryCard
+            code={b.bookingCode}
+            from={b.pickupCity}
+            to={b.deliveryCity}
+            fromDetail={b.pickupAddress}
+            toDetail={b.deliveryAddress}
+            amountLabel="Customer offered freight"
+            amount={inr(b.customerOffer)}
+            amountNote={`Indicative platform freight ${inr(b.suggestedFreight)}`}
+          />
+          <InfoCard
+            title="Load"
+            items={[
+              { icon: 'resize-outline', label: 'Road distance', value: `${km(b.distanceKm)} · ${duration(b.durationMinutes)}` },
+              { icon: 'flask-outline', label: 'Product', value: b.product },
+              { icon: 'water-outline', label: 'Quantity', value: `${b.quantityKl} KL in ${b.tankerCapacityKl} KL tankers` },
+              { icon: 'bus-outline', label: 'Tankers needed', value: `${b.remainingTankers} of ${b.numberOfTankers}` },
+              { icon: 'calendar-outline', label: 'Loading', value: `${day(b.loadingDate)}, ${b.loadingTime}` },
+              { icon: 'flag-outline', label: 'Delivery by', value: day(b.expectedDeliveryDate) },
+              { icon: 'hourglass-outline', label: 'Offers close', value: dateTime(b.offerExpiresAt) },
+              b.specialRequirements ? { icon: 'information-circle-outline', label: 'Requirements', value: b.specialRequirements } : null,
+            ]}
+          />
           {b.offerId ? (
-            <Button title="View my negotiation" onPress={() => router.push(ROUTES.transporter.offer(b.offerId!))} />
+            <Button title="View my negotiation" icon="chatbubbles-outline" onPress={() => router.push(ROUTES.transporter.offer(b.offerId!))} />
           ) : (
-            <>
+            <Card style={{ gap: 10 }}>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: colors.ink }}>Make your offer</Text>
               <Field label={`Tankers you offer (up to ${max})`} value={tankers} onChangeText={setTankers} keyboardType="number-pad" />
-              <ActionButton title={`Accept ${inr(share)}`} action={() => submit({ mode: 'ACCEPT' })} success="Offer submitted at the customer's price. The company confirms next." confirm={`Offer ${n} tanker(s) at ${inr(share)}?`} />
-              <Button title="Make counter-offer" variant="secondary" onPress={() => setCounter(true)} />
-              <Text style={{ color: colors.muted, fontSize: 12 }}>Accepting submits your offer. The company still confirms which transporter it books.</Text>
-            </>
+              <ActionButton title={`Accept ${inr(share)}`} icon="checkmark-circle-outline" action={() => submit({ mode: 'ACCEPT' })} success="Offer submitted at the customer's price. The company confirms next." confirm={`Offer ${n} tanker(s) at ${inr(share)}?`} />
+              <Button title="Make counter-offer" icon="swap-horizontal-outline" variant="secondary" onPress={() => setCounter(true)} />
+              <Text style={{ color: colors.muted, fontSize: 12, textAlign: 'center' }}>Accepting submits your offer. The company still confirms which transporter it books.</Text>
+            </Card>
           )}
           <PromptModal visible={counter} title="Counter-offer" label={`Your total price for ${n} tanker(s) (₹)`} keyboard="numeric" submit="Send" hint={`Customer's price for these: ${inr(share)}`} onClose={() => setCounter(false)} onSubmit={(v) => submit({ mode: 'COUNTER', amount: Number(v) })} />
         </>

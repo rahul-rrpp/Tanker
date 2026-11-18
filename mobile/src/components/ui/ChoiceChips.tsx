@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { colors, formStyles as styles } from '@/theme';
+import { colors, formStyles as styles, fonts } from '@/theme';
 
 /** Labelled chip-style single-select for forms (e.g. licence type). */
 export function ChoiceChips<T extends string>({
@@ -29,7 +29,7 @@ export function ChoiceChips<T extends string>({
               accessibilityState={{ selected }}
               style={[styles.chip, selected && styles.chipSelected]}
             >
-              <Text style={{ color: selected ? colors.brand700 : colors.ink, fontWeight: '600' }}>{o.label}</Text>
+              <Text style={{ color: selected ? colors.brand700 : colors.ink, fontFamily: fonts.semibold }}>{o.label}</Text>
             </Pressable>
           );
         })}

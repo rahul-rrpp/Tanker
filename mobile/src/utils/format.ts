@@ -31,3 +31,15 @@ export function duration(minutes: number | null | undefined): string {
   const m = minutes % 60;
   return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
 }
+
+/** Day and short month of a DATE value ("15", "Nov") for the ledger date column. */
+export function dayParts(d: string | null | undefined): { day: string; month: string } | null {
+  if (!d) return null;
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return null;
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', ...o }).format(date);
+  return { day: f({ day: '2-digit' }), month: f({ month: 'short' }) };
+}
+
+/** "Pune → Mumbai" for one-line routes. */
+export const routeText = (from: string | null | undefined, to: string | null | undefined) => `${from || '—'} → ${to || '—'}`;

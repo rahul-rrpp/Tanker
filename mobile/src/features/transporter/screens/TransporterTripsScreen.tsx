@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Text, View, Alert } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { parseApiError, ENDPOINTS } from '@/services/api';
-import { Card, Chips, Pill, Button } from '@/components/ui';
+import { Button, Chips, ListCard, Pill } from '@/components/ui';
 import { Page } from '@/components/layout';
 import { PickerModal, QueryState } from '@/components/common';
 import { toneFor } from '@/utils/status';
@@ -43,37 +44,53 @@ export default function TransporterTripsScreen() {
       Alert.alert('Could not assign', parseApiError(e).message);
     }
   };
+
   const q = tab === 'assign' ? confirmed : trips;
   return (
-    <Page title="Trips" refreshing={q.refreshing} onRefresh={q.refresh}>
-      <Chips value={tab} options={[{ value: 'assign', label: 'Confirmed (assign)' }, { value: 'active', label: 'Active' }, { value: 'history', label: 'History' }]} onChange={setTab} />
-      <QueryState loading={q.loading} error={q.error} empty={tab === 'assign' ? confirmed.data?.items.length === 0 : trips.data?.items.length === 0} emptyText="Nothing here" onRetry={q.reload} />
+    <Page title="Trips" subtitle="Assign tankers and drivers, follow every trip" refreshing={q.refreshing} onRefresh={q.refresh}>
+      <Chips value={tab} options={[{ value: 'assign', label: 'To assign' }, { value: 'active', label: 'Active' }, { value: 'history', label: 'History' }]} onChange={setTab} />
+      <QueryState loading={q.loading} error={q.error} empty={tab === 'assign' ? confirmed.data?.items.length === 0 : trips.data?.items.length === 0} emptyText="Nothing here" emptyIcon="navigate-outline" onRetry={q.reload} />
       {tab === 'assign' && confirmed.data?.items.map((b) => (
-        <Card key={b.allocationId}>
-          <Text style={{ fontWeight: '700', color: colors.ink }}>{b.pickup.city} → {b.delivery.city}</Text>
-          <Text style={{ color: colors.muted }}>{b.bookingCode} · {b.company.name} · {inr(b.agreedFreight)}</Text>
-          <Text style={{ color: colors.ink }}>Loading {day(b.loadingDate)} {b.loadingTime}</Text>
+        <ListCard key={b.allocationId} code={`${b.bookingCode} · ${b.company.name}`} from={b.pickup.city} to={b.delivery.city} amount={inr(b.agreedFreight)} amountLabel="Agreed" meta={[`Loading ${day(b.loadingDate)} ${b.loadingTime}`]}>
           {b.trips.map((t) => (
-            <View key={t.id} style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 8, marginTop: 4, gap: 6 }}>
-              <Text style={{ fontWeight: '600' }} onPress={() => router.push(ROUTES.transporter.trip(t.id))}>{t.tripCode} · {humanize(t.status)}</Text>
-              <Text style={{ color: colors.muted }}>{t.tanker?.registrationNumber ?? 'No tanker'} · {t.driver?.user.fullName ?? 'No driver'}</Text>
+            <View key={t.id} style={{ backgroundColor: colors.canvas, borderRadius: 14, padding: 12, gap: 10 }}>
+              <Pressable onPress={() => router.push(ROUTES.transporter.trip(t.id))} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ fontWeight: '800', color: colors.ink }}>{t.tripCode}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Pill label={humanize(t.status)} tone={toneFor(t.status)} />
+                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                </View>
+              </Pressable>
+              <View style={{ flexDirection: 'row', gap: 16, flexWrap: 'wrap' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="bus-outline" size={15} color={t.tanker ? colors.brand600 : colors.muted} />
+                  <Text style={{ color: t.tanker ? colors.ink : colors.muted, fontSize: 13 }}>{t.tanker?.registrationNumber ?? 'No tanker'}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="person-outline" size={15} color={t.driver ? colors.brand600 : colors.muted} />
+                  <Text style={{ color: t.driver ? colors.ink : colors.muted, fontSize: 13 }}>{t.driver?.user.fullName ?? 'No driver'}</Text>
+                </View>
+              </View>
               {REASSIGNABLE.includes(t.status) ? (
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <View style={{ flex: 1 }}><Button title={t.tanker ? 'Change tanker' : 'Assign tanker'} variant="secondary" onPress={() => setPicking({ kind: 'tanker', bookingId: b.id, tripId: t.id })} /></View>
-                  <View style={{ flex: 1 }}><Button title={t.driver ? 'Change driver' : 'Assign driver'} variant="secondary" disabled={!t.tanker} onPress={() => setPicking({ kind: 'driver', bookingId: b.id, tripId: t.id })} /></View>
+                  <View style={{ flex: 1 }}><Button title={t.tanker ? 'Change tanker' : 'Assign tanker'} icon="bus-outline" variant="secondary" onPress={() => setPicking({ kind: 'tanker', bookingId: b.id, tripId: t.id })} /></View>
+                  <View style={{ flex: 1 }}><Button title={t.driver ? 'Change driver' : 'Assign driver'} icon="person-outline" variant="secondary" disabled={!t.tanker} onPress={() => setPicking({ kind: 'driver', bookingId: b.id, tripId: t.id })} /></View>
                 </View>
               ) : null}
             </View>
           ))}
-        </Card>
+        </ListCard>
       ))}
       {tab !== 'assign' && trips.data?.items.map((t) => (
-        <Card key={t.id} onPress={() => router.push(ROUTES.transporter.trip(t.id))}>
-          <Text style={{ fontWeight: '700', color: colors.ink }}>{t.pickup} → {t.delivery}</Text>
-          <Text style={{ color: colors.muted }}>{t.tripCode} · {t.tanker?.registrationNumber ?? '—'} · {t.driver?.name ?? '—'}</Text>
-          {t.etaAt ? <Text style={{ color: colors.muted }}>ETA {dateTime(t.etaAt)}</Text> : null}
-          <View style={{ flexDirection: 'row', gap: 6 }}><Pill label={humanize(t.status)} tone={toneFor(t.status)} />{t.exception ? <Pill label={humanize(t.exception)} tone="danger" /> : null}</View>
-        </Card>
+        <ListCard
+          key={t.id}
+          code={t.tripCode}
+          status={<View style={{ flexDirection: 'row', gap: 6 }}><Pill label={humanize(t.status)} tone={toneFor(t.status)} />{t.exception ? <Pill label={humanize(t.exception)} tone="danger" /> : null}</View>}
+          from={t.pickup}
+          to={t.delivery}
+          meta={[`${t.tanker?.registrationNumber ?? '—'} · ${t.driver?.name ?? '—'}`, t.etaAt ? `ETA ${dateTime(t.etaAt)}` : null]}
+          onPress={() => router.push(ROUTES.transporter.trip(t.id))}
+        />
       ))}
       <PickerModal visible={Boolean(picking)} title={picking?.kind === 'tanker' ? 'Choose tanker' : 'Choose driver'} items={items} onClose={() => setPicking(null)} onPick={(p) => void assign(p)} />
     </Page>

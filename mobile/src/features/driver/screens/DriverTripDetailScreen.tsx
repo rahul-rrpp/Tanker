@@ -1,8 +1,8 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, AppState, Text } from 'react-native';
+import { Alert, AppState, Text, View } from 'react-native';
 import { parseApiError, ENDPOINTS } from '@/services/api';
-import { Card, Pill, Row, SectionTitle, Banner, Button } from '@/components/ui';
+import { Banner, Button, Card, IconBadge, InfoCard, InfoRow, Pill, SectionTitle, SummaryCard } from '@/components/ui';
 import { callPhone, openMaps } from '@/utils/linking';
 import { Page } from '@/components/layout';
 import { PromptModal, QueryState } from '@/components/common';
@@ -65,7 +65,7 @@ export default function DriverTripDetailScreen() {
   const share = async () => {
     try {
       const r = await startTripTracking(String(id));
-      if (r === 'denied') Alert.alert('Location is off', 'Allow location for TankerLink in your phone settings to share trip progress.');
+      if (r === 'denied') Alert.alert('Location is off', 'Allow location for OnlyTanker in your phone settings to share trip progress.');
       else if (r === 'foreground-only') Alert.alert('Limited sharing', 'Location is shared only while the app is open. Choose "Allow all the time" in settings to keep sharing when the screen is locked.');
     } catch (e) {
       Alert.alert('Could not start sharing', (e as Error).message);
@@ -85,55 +85,97 @@ export default function DriverTripDetailScreen() {
   };
 
   const toward = t && ['CONFIRM_ASSIGNMENT', 'REACHED_PICKUP'].includes(t.nextAction ?? '') ? t.pickup : t?.delivery;
+  // Presentation only: where the next action sits in the fixed driver step order.
+  const steps = Object.keys(ACTION_LABEL);
+  const stepIndex = t?.nextAction ? steps.indexOf(t.nextAction) : t ? steps.length : 0;
+  const sharing = gps.mine && gps.running;
   return (
-    <Page title={t ? `${t.pickup.city} → ${t.delivery.city}` : 'Trip'} subtitle={t ? `${t.tripCode} · ${t.product}` : undefined} refreshing={q.refreshing} onRefresh={q.refresh}>
+    <Page title="Trip" subtitle={t ? `${t.product} · ${t.quantityKl} KL` : undefined} refreshing={q.refreshing} onRefresh={q.refresh}>
       <Stack.Screen options={{ title: t?.tripCode ?? 'Trip' }} />
-      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} />
+      <QueryState loading={q.loading} error={q.error} onRetry={q.reload} skeleton="detail" />
       {t ? (
         <>
-          <Pill label={humanize(t.status)} tone={toneFor(t.status)} />
-          {t.nextAction === 'SUBMIT_COMPLETION' && !hasProof ? (
-            <Banner tone="info">Upload the signed delivery proof to submit completion.</Banner>
-          ) : t.nextAction ? (
-            <Button title={ACTION_LABEL[t.nextAction] ?? humanize(t.nextAction)} loading={busy} onPress={() => void step()} style={{ paddingVertical: 18 }} />
-          ) : null}
-          {t.status === 'DELIVERED' ? <Banner tone="success">Trip submitted. Your transporter will close it.</Banner> : null}
-          {toward ? <Button title={`Navigate to ${toward.city ?? 'destination'}`} variant="secondary" onPress={() => openMaps(toward.lat, toward.lng)} /> : null}
+          <SummaryCard code={t.tripCode} status={<Pill label={humanize(t.status)} tone={toneFor(t.status)} />} from={t.pickup.city} to={t.delivery.city} fromDetail={t.pickup.address} toDetail={t.delivery.address} />
 
-          {t.locationSharingAllowed ? (
-            <Card>
-              <Text style={{ fontWeight: '700', color: colors.ink }}>Live location</Text>
-              <Text style={{ color: gps.mine && gps.running ? colors.success : colors.muted }}>{gps.mine && gps.running ? 'Sharing, including with the screen locked' : 'Not sharing'}</Text>
-              <Row label="Last received by server" value={timeAgo(t.lastGpsAt)} />
-              {gps.queued ? <Row label="Waiting to send (offline)" value={gps.queued} /> : null}
-              {gps.mine && gps.running ? <Button title="Stop sharing" variant="secondary" onPress={() => void stopTripTracking().then(refreshGps)} /> : <Button title="Share live location" onPress={() => void share()} />}
+          {t.nextAction || t.status === 'DELIVERED' ? (
+            <Card style={{ gap: 12, backgroundColor: colors.brand900, borderColor: colors.brand900 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ color: colors.brand100, fontSize: 12, fontWeight: '700', letterSpacing: 0.6 }}>NEXT STEP</Text>
+                <Text style={{ color: colors.brand100, fontSize: 12 }}>{Math.min(stepIndex + 1, steps.length)} of {steps.length}</Text>
+              </View>
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }}>
+                <View style={{ width: `${(Math.min(stepIndex, steps.length) / steps.length) * 100}%`, height: '100%', backgroundColor: colors.accentLight, borderRadius: 3 }} />
+              </View>
+              {t.nextAction === 'SUBMIT_COMPLETION' && !hasProof ? (
+                <Banner tone="info">Upload the signed delivery proof to submit completion.</Banner>
+              ) : t.nextAction ? (
+                <Button title={ACTION_LABEL[t.nextAction] ?? humanize(t.nextAction)} icon="arrow-forward-circle-outline" loading={busy} onPress={() => void step()} style={{ height: 60, backgroundColor: colors.accent }} />
+              ) : null}
+              {t.status === 'DELIVERED' ? <Banner tone="success">Trip submitted. Your transporter will close it.</Banner> : null}
             </Card>
           ) : null}
 
-          <Card>
-            <Row label="Pickup" value={t.pickup.address} />
-            <Row label="Loading" value={`${day(t.loadingDate)}, ${t.loadingTime}`} />
-            {t.loadingInstructions ? <Row label="Instructions" value={t.loadingInstructions} /> : null}
-            <Button title={`Call ${t.loadingContact.name}`} variant="ghost" onPress={() => callPhone(t.loadingContact.phone)} />
-          </Card>
-          <Card>
-            <Row label="Delivery" value={t.delivery.address} />
-            <Row label="By" value={day(t.expectedDeliveryDate)} />
-            {t.deliveryInstructions ? <Row label="Instructions" value={t.deliveryInstructions} /> : null}
-            <Button title={`Call ${t.deliveryContact.name}`} variant="ghost" onPress={() => callPhone(t.deliveryContact.phone)} />
-          </Card>
+          {toward ? <Button title={`Navigate to ${toward.city ?? 'destination'}`} icon="navigate-outline" variant="secondary" onPress={() => openMaps(toward.lat, toward.lng)} /> : null}
 
+          {t.locationSharingAllowed ? (
+            <Card style={{ gap: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <IconBadge icon={sharing ? 'radio-outline' : 'location-outline'} tone={sharing ? 'success' : 'neutral'} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontWeight: '800', color: colors.ink, fontSize: 15 }}>Live location</Text>
+                  <Text style={{ color: sharing ? colors.success : colors.muted, fontSize: 12, marginTop: 1 }}>{sharing ? 'Sharing, including with the screen locked' : 'Not sharing'}</Text>
+                </View>
+              </View>
+              <InfoRow icon="cloud-done-outline" label="Last received" value={timeAgo(t.lastGpsAt)} last={!gps.queued} />
+              {gps.queued ? <InfoRow icon="cloud-offline-outline" label="Waiting to send" value={gps.queued} last /> : null}
+              {sharing ? <Button title="Stop sharing" icon="stop-circle-outline" variant="secondary" onPress={() => void stopTripTracking().then(refreshGps)} /> : <Button title="Share live location" icon="radio-outline" onPress={() => void share()} />}
+            </Card>
+          ) : null}
+
+          <InfoCard
+            title="Pickup"
+            items={[
+              { icon: 'location-outline', label: 'Address', value: t.pickup.address },
+              { icon: 'calendar-outline', label: 'Loading', value: `${day(t.loadingDate)}, ${t.loadingTime}` },
+              t.loadingInstructions ? { icon: 'information-circle-outline', label: 'Instructions', value: t.loadingInstructions } : null,
+            ]}
+            footer={<Button title={`Call ${t.loadingContact.name}`} icon="call-outline" variant="secondary" onPress={() => callPhone(t.loadingContact.phone)} />}
+          />
+          <InfoCard
+            title="Delivery"
+            items={[
+              { icon: 'flag-outline', label: 'Address', value: t.delivery.address },
+              { icon: 'calendar-outline', label: 'Deliver by', value: day(t.expectedDeliveryDate) },
+              t.deliveryInstructions ? { icon: 'information-circle-outline', label: 'Instructions', value: t.deliveryInstructions } : null,
+            ]}
+            footer={<Button title={`Call ${t.deliveryContact.name}`} icon="call-outline" variant="secondary" onPress={() => callPhone(t.deliveryContact.phone)} />}
+          />
+
+          {!['COMPLETED', 'CANCELLED'].includes(t.status) || q.data?.documents.length ? <SectionTitle>Documents</SectionTitle> : null}
+          {q.data?.documents.length ? (
+            <Card style={{ gap: 10 }}>
+              {q.data.documents.map((d) => (
+                <View key={d.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <IconBadge icon="checkmark-done-outline" tone="success" size={34} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: '700', color: colors.ink }}>{humanize(d.type)}</Text>
+                    <Text style={{ color: colors.muted, fontSize: 12 }}>{dateTime(d.createdAt)}</Text>
+                  </View>
+                </View>
+              ))}
+            </Card>
+          ) : null}
           {!['COMPLETED', 'CANCELLED'].includes(t.status) ? (
             <>
-              <SectionTitle>Documents</SectionTitle>
-              <Button title="Add delivery proof" variant={t.nextAction === 'SUBMIT_COMPLETION' ? 'primary' : 'secondary'} onPress={() => void addDoc('DELIVERY_PROOF')} />
-              <Button title="Add loading slip" variant="secondary" onPress={() => void addDoc('LOADING_SLIP')} />
-              <Button title="Add other document" variant="ghost" onPress={() => void addDoc('OTHER')} />
+              <Button title="Add delivery proof" icon="camera-outline" variant={t.nextAction === 'SUBMIT_COMPLETION' ? 'primary' : 'secondary'} onPress={() => void addDoc('DELIVERY_PROOF')} />
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1 }}><Button title="Loading slip" icon="receipt-outline" variant="secondary" onPress={() => void addDoc('LOADING_SLIP')} /></View>
+                <View style={{ flex: 1 }}><Button title="Other" icon="document-outline" variant="secondary" onPress={() => void addDoc('OTHER')} /></View>
+              </View>
             </>
           ) : null}
-          {q.data?.documents.map((d) => <Text key={d.id} style={{ color: colors.ink }}>✓ {humanize(d.type)} · {dateTime(d.createdAt)}</Text>)}
 
-          {!['COMPLETED', 'CANCELLED', 'DELIVERED'].includes(t.status) ? <Button title="Emergency assistance" variant="danger" onPress={() => setEmergency(true)} /> : null}
+          {!['COMPLETED', 'CANCELLED', 'DELIVERED'].includes(t.status) ? <Button title="Emergency assistance" icon="warning-outline" variant="danger" onPress={() => setEmergency(true)} /> : null}
           <PromptModal visible={emergency} title="Emergency assistance" label="What has happened?" submit="Alert my transporter" hint="For danger to life, call 112 first." onClose={() => setEmergency(false)} onSubmit={async (message) => { await driverService.emergency(id, { message, ...(await currentPoint()) }); Alert.alert('Sent', 'Your transporter has been alerted.'); void q.reload(); }} />
         </>
       ) : null}

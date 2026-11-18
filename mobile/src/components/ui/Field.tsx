@@ -1,6 +1,6 @@
 import { forwardRef, useState } from 'react';
 import { Pressable, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { colors, formStyles as styles } from '@/theme';
+import { colors, formStyles as styles, fonts } from '@/theme';
 
 export interface FieldProps extends TextInputProps {
   label: string;
@@ -62,7 +62,7 @@ export const PasswordField = forwardRef<TextInput, FieldProps>(function Password
         accessibilityLabel={visible ? 'Hide password' : 'Show password'}
         hitSlop={8}
       >
-        <Text style={{ color: colors.brand600, fontWeight: '600', fontSize: 13 }}>{visible ? 'Hide' : 'Show'}</Text>
+        <Text style={{ color: colors.brand600, fontFamily: fonts.semibold, fontSize: 13 }}>{visible ? 'Hide' : 'Show'}</Text>
       </Pressable>
     </View>
   );

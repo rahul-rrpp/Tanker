@@ -310,7 +310,7 @@ adminCompaniesRouter.post('/:id/review', async (req: Request, res: Response) => 
       companyId: id,
       type: 'COMPANY_VERIFICATION_UPDATE',
       title: to === 'VERIFIED' ? 'Your company is verified' : 'Company verification rejected',
-      message: to === 'VERIFIED' ? 'You can now submit booking requests on TankerLink.' : `Reason: ${reason}. Update your documents in Company Profile and we will review again.`,
+      message: to === 'VERIFIED' ? 'You can now submit booking requests on OnlyTanker.' : `Reason: ${reason}. Update your documents in Company Profile and we will review again.`,
       link: '/company/profile',
     });
   }

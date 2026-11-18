@@ -19,10 +19,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next, reason } = await searchParams;
   return (
     <AuthShell>
-      <AuthHeading title={transporterOpen ? 'Sign in to TankerLink' : 'Company sign in'} subtitle={transporterOpen ? 'For companies, transporters and drivers.' : 'Book tankers, compare transporter offers and track your loads.'} />
+      <AuthHeading title={transporterOpen ? 'Sign in to OnlyTanker' : 'Company sign in'} subtitle={transporterOpen ? 'For companies, transporters and drivers.' : 'Book tankers, compare transporter offers and track your loads.'} />
       <LoginForm next={next} notice={reason ? NOTICES[reason] : undefined} />
       <p className="mt-8 text-center text-sm text-muted">
-        New to TankerLink?{' '}
+        New to OnlyTanker?{' '}
         <Link href="/register" className="font-semibold text-brand-600 hover:text-brand-700">
           Register your company
         </Link>
@@ -37,7 +37,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </p>
       {employeeOpen && (
         <p className="mt-3 text-center text-xs text-muted">
-          TankerLink staff:{' '}
+          OnlyTanker staff:{' '}
           <Link href="/login/employee" className="font-semibold text-brand-600 hover:text-brand-700">employee sign in</Link>
         </p>
       )}

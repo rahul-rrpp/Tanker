@@ -18,7 +18,7 @@ export default function Page() {
   const { data, error, mutate } = useApi<Paged<T>>(`/tankers?page=${page}${q ? `&q=${encodeURIComponent(q)}` : ''}`);
   return (
     <>
-      <PageHeader title="My fleet" subtitle="A tanker can bid once TankerLink has verified it" actions={<><div className="w-52"><TextField label="Search" placeholder="Registration number" value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }} /></div><Link href="/transporter/fleet/new"><Button><Plus className="h-4 w-4" aria-hidden /> Add tanker</Button></Link></>} />
+      <PageHeader title="My fleet" subtitle="A tanker can bid once OnlyTanker has verified it" actions={<><div className="w-52"><TextField label="Search" placeholder="Registration number" value={q} onChange={(e) => { setPage(1); setQ(e.target.value); }} /></div><Link href="/transporter/fleet/new"><Button><Plus className="h-4 w-4" aria-hidden /> Add tanker</Button></Link></>} />
       {error ? <ErrorBlock error={error} onRetry={() => void mutate()} /> : !data ? <LoadingBlock /> : data.items.length === 0 ? <EmptyState title="No tankers yet" action={<Link href="/transporter/fleet/new"><Button>Add your first tanker</Button></Link>} /> : (
         <DataTable rows={data.items} rowKey={(t) => t.id} columns={[
           { key: 'id', label: 'Tanker ID', render: (t) => <Link className="font-mono text-xs font-semibold text-brand-600" href={`/transporter/fleet/${t.id}`}>{t.id.slice(0, 8).toUpperCase()}</Link> },

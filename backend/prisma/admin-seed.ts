@@ -8,12 +8,12 @@ import type { PrismaClient } from '@prisma/client';
 import { DEFAULT_EMPLOYEE_ROLES, DEFAULT_KPI_TARGETS, KPI_DEFINITIONS, adminPermissionKey, type AdminModule } from '../src/config/admin-permissions';
 
 const TEMPLATES: [string, string, string, 'IN_APP' | 'EMAIL' | 'SMS' | 'WHATSAPP', string, string][] = [
-  ['REGISTRATION_IN_APP', 'Registration successful', 'REGISTRATION', 'IN_APP', 'Welcome to TankerLink', 'Your company ID is {{companyCode}}. Upload your GST certificate and PAN to complete verification.'],
-  ['VERIFICATION_EMAIL', 'Verification update', 'VERIFICATION', 'EMAIL', 'Your TankerLink verification status', 'Hello {{name}}, your account verification status is now {{status}}. {{reason}}'],
-  ['BOOKING_CREATED_SMS', 'Booking created', 'BOOKING_CREATED', 'SMS', '', 'TankerLink: booking {{bookingCode}} created. We are finding tankers for you.'],
+  ['REGISTRATION_IN_APP', 'Registration successful', 'REGISTRATION', 'IN_APP', 'Welcome to OnlyTanker', 'Your company ID is {{companyCode}}. Upload your GST certificate and PAN to complete verification.'],
+  ['VERIFICATION_EMAIL', 'Verification update', 'VERIFICATION', 'EMAIL', 'Your OnlyTanker verification status', 'Hello {{name}}, your account verification status is now {{status}}. {{reason}}'],
+  ['BOOKING_CREATED_SMS', 'Booking created', 'BOOKING_CREATED', 'SMS', '', 'OnlyTanker: booking {{bookingCode}} created. We are finding tankers for you.'],
   ['OFFER_RECEIVED_WA', 'Offer received', 'OFFER_RECEIVED', 'WHATSAPP', '', 'New offer of Rs {{amount}} from {{transporter}} on {{bookingCode}}.'],
   ['OFFER_ACCEPTED_IN_APP', 'Offer accepted', 'OFFER_ACCEPTED', 'IN_APP', 'Offer accepted', '{{transporter}} confirmed for {{bookingCode}} at Rs {{amount}}.'],
-  ['TRIP_STARTED_SMS', 'Trip started', 'TRIP_STARTED', 'SMS', '', 'TankerLink: tanker {{vehicle}} has started the trip for {{bookingCode}}.'],
+  ['TRIP_STARTED_SMS', 'Trip started', 'TRIP_STARTED', 'SMS', '', 'OnlyTanker: tanker {{vehicle}} has started the trip for {{bookingCode}}.'],
   ['DELIVERY_EMAIL', 'Delivery completed', 'DELIVERY_COMPLETED', 'EMAIL', 'Delivery completed for {{bookingCode}}', 'Your load for {{bookingCode}} was delivered. Proof of delivery is available in Documents.'],
   ['PAYMENT_RECEIVED_EMAIL', 'Payment received', 'PAYMENT_RECEIVED', 'EMAIL', 'Payment received - {{receiptNumber}}', 'We received Rs {{amount}} for {{bookingCode}}. Receipt {{receiptNumber}}.'],
   ['DOCUMENT_EXPIRY_EMAIL', 'Document expiry reminder', 'DOCUMENT_EXPIRY', 'EMAIL', 'Document expiring on {{expiryDate}}', '{{documentType}} for {{owner}} expires on {{expiryDate}}. Please upload a renewed copy.'],

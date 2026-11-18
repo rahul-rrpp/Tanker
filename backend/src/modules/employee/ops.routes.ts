@@ -66,7 +66,7 @@ opsRouter.post('/bookings', can('bookings', 'create'), async (req: Request, res:
   const authorization = { ...input.authorization, authorizedAt: input.authorization.authorizedAt.toISOString(), recordedBy: uid(req), recordedByName: req.admin!.name, recordedAt: new Date().toISOString() };
   const booking = await createBooking(company.id, uid(req), parsed.data, req, { source: 'ADMIN_ASSISTED', customerAuthorization: authorization });
   await audit({ action: 'booking.created_by_employee', entityType: 'booking', entityId: booking.id, companyId: company.id, module: 'bookings', actorType: 'EMPLOYEE', newValue: { bookingCode: booking.bookingCode, authorization }, req });
-  await notify({ companyId: company.id, type: 'BOOKING_CREATED', title: `Booking ${booking.bookingCode} created on your behalf`, message: `${req.admin!.name} (TankerLink) created this as authorised by ${input.authorization.authorizedBy}.`, bookingId: booking.id });
+  await notify({ companyId: company.id, type: 'BOOKING_CREATED', title: `Booking ${booking.bookingCode} created on your behalf`, message: `${req.admin!.name} (OnlyTanker) created this as authorised by ${input.authorization.authorizedBy}.`, bookingId: booking.id });
   created(res, `Booking ${booking.bookingCode} created`, { booking: { id: booking.id, bookingCode: booking.bookingCode } });
 });
 
